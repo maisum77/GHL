@@ -9,11 +9,11 @@ The complete ordered list of what you do by hand, in the order that works. Tick 
 | 0 | Gather credentials and decide on hosting | 15 min | — |
 | 1 | Get it running locally | 5 min | Local site loads |
 | 2 | Connect to GHL for the first time | 5 min | Setup returns a result panel |
-| 3 | Fix any field that lost its options | 10 min | **No `options needed` lines** |
+| 3 | Confirm the field options stuck | 3 min | **No `options needed` lines** |
 | 4 | Verify the connection read-only | 3 min | `verify:ghl --dry-run` passes |
-| 5 | Build the nurture workflow | 20 min | Workflow published |
+| 5 | Build the pipeline and the nurture workflow | 10 min | Pipeline + workflow published |
 | 6 | Connect the calendar host | 5 min | Slots appear |
-| 7 | Verify email sending | 5 min | Test email arrives |
+| 7 | Verify email sending — only if you added email steps | 5 min | Test email arrives |
 | 8 | Re-connect with all IDs | 3 min | No outstanding manual steps |
 | 9 | Test all three lead paths | 15 min | HOT/WARM/NURTURE all correct |
 | 10 | Full write verification | 3 min | `verify:ghl` passes |
@@ -21,9 +21,10 @@ The complete ordered list of what you do by hand, in the order that works. Tick 
 | 12 | Go-live acceptance test | 30 min | `HANDOVER.md` §9 complete |
 | 13 | After handover decisions | 5 min | — |
 
-> **Do not skip Phase 3.** It is the one step where the system can look completely healthy while
-> silently dropping your data. Everything downstream — scoring, workflow branches, the dashboard —
-> reads the fields that Phase 3 protects.
+> **Do not skip Phase 3.** It is a ten-second read, not a repair job. If the app reports
+> `options needed`, leads will score 0 on that field and always classify as `NURTURE` while
+> everything looks healthy. Everything downstream — scoring, workflow branches, the dashboard —
+> reads the fields Phase 3 protects.
 
 ---
 
@@ -42,7 +43,7 @@ GHL → **Settings → Private Integrations → Create**
 | Opportunities — read & write | Pipeline, opportunities, dashboard |
 | Calendars — read & write | The `Discovery Call` calendar |
 | Locations — read | Validating the location ID |
-| Custom fields — read & write | The 13 qualification fields |
+| Custom fields — read & write | The 12 qualification fields |
 | Tags — read & write | HOT / WARM / NURTURE |
 | Workflows — read | Finding your nurture workflow |
 | Forms — read | Form discovery |
@@ -104,36 +105,29 @@ Open `http://localhost:3000/setup`.
 - [ ] Leave form URL, booking URL, workflow ID, and host user ID empty
 - [ ] Submit
 
-**Expected:** a result panel listing created fields, tags, the pipeline, and the `Discovery Call`
-calendar. Status will say **Action needed** — that is correct at this stage.
+**Expected:** a result panel listing created fields, tags, and the `Discovery Call` calendar.
+Status will say **Action needed** — that is correct at this stage.
 
 - [ ] Location name shown is your intended subaccount
-- [ ] 13 fields reported
-- [ ] 5 tags reported
-- [ ] `pipeline:Agency Funnel` created
+- [ ] 12 fields reported
+- [ ] 4 tags reported
 - [ ] `calendar:Discovery Call` created
+- [ ] One manual step mentions creating the `Agency Funnel` pipeline — **expected**, see Phase 5
 
 > **If you see warnings** like `Could not read workflows (401)`, your token is missing a scope. Go
 > back to 0.1 and add it. Each warning names the exact resource.
 
 ---
 
-## Phase 3 — Fix the field options
+## Phase 3 — Confirm the field options stuck
 
-**This phase is the important one.**
-
-GHL will not store a dropdown value that is not one of the field's real options. For
-`SINGLE_OPTIONS` fields, GHL's create endpoint can return success while discarding the values
-entirely. The app reads every field back to detect this and reports:
-
-> `Created, options needed`
-
-### 3.1 Check the result panel
+GHL silently discards a dropdown value that is not one of the field's real options, which can make
+a lead score `NURTURE` with an empty budget while every screen looks healthy. The app creates the
+options itself and reads each one back, so this phase is a **check, not a repair job**.
 
 - [ ] **No field says `options needed`** → skip to Phase 4
-- [ ] **One or more do** → continue
-
-### 3.2 Add the options in GHL
+- [ ] **One or more do** → the option payload was rejected. Re-run setup first; if it persists,
+      add the options by hand:
 
 GHL → **Settings → Custom Fields → Contact** → click the field → **Edit** → **Options**
 
@@ -178,6 +172,9 @@ WARM
 NURTURE
 ```
 
+**`Existing Website`** — 2 options (`Yes`, `No`). It is a checkbox, which GHL treats as a
+multi-select, so it is rejected outright without them.
+
 > Copy-paste carefully. A mismatched character — a hyphen instead of an en dash in `Budget` — means
 > leads will score 0 on that field and always classify as `NURTURE`.
 
@@ -196,35 +193,57 @@ GHL_TOKEN=<your-token> GHL_LOCATION_ID=<your-location-id> npm run verify:ghl -- 
 ```
 
 - [ ] Step 1 passes — location resolves
-- [ ] Step 2 passes — all 13 fields exist
+- [ ] Step 2 passes — all 12 fields exist
 - [ ] **Step 3 passes — all four picklists report every option present**
-- [ ] Step 4 passes — 5 tags
-- [ ] Step 5 passes — pipeline with 8 stages
+- [ ] Step 4 passes — 4 tags
+- [ ] Step 5 passes — pipeline with 8 stages (needs Phase 5.1 first)
 - [ ] Step 10 passes — finds `Lead Nurture` *(will fail until Phase 5 — that is fine)*
 
 If step 3 fails, return to 3.2. If any other step fails, the message names what to fix.
 
 ---
 
-## Phase 5 — Build the nurture workflow
+## Phase 5 — Build the pipeline and the nurture workflow
 
-GHL's workflow API is read-only, so this is the one thing you must build by hand. The app enrols
-every lead into it, so there is nothing to wire up afterwards.
+Neither can be created by API. GHL rejects `POST /opportunities/pipelines` with
+`401 The token is not authorized for this scope` even when Opportunities read & write is granted —
+the same token creates opportunities at `POST /opportunities/` without complaint. Workflows are
+read-only over the API entirely. Both are found **by name** on the next setup run, so there is no
+ID to paste for the pipeline.
 
-Open **`NURTURE_WORKFLOW.md`** and follow it. Summary:
+### 5.1 The `Agency Funnel` pipeline
+
+GHL → **Opportunities → Pipelines → Create**. Name it exactly `Agency Funnel`, with these eight
+stages in this order. The app looks stages up by name, so a rename breaks opportunity creation.
+
+```
+New Lead · Qualified · Call Booked · Discovery Completed
+Proposal Sent · Negotiation · Won · Lost
+```
+
+- [ ] Pipeline created with all 8 stage names spelled exactly as above
+- [ ] Opened once in the UI so GHL registers it
+
+### 5.2 The `Lead Nurture` workflow
+
+Open **`NURTURE_WORKFLOW.md`** and follow it. It has two variants — build **Variant A** now:
 
 - [ ] Create a workflow named exactly `Lead Nurture`
-- [ ] First step is an If/Else on `Lead Status` = `HOT`
-- [ ] HOT branch: booking CTA email → wait 1 day → nudge → wait 3 days → notify
-- [ ] Nurture branch: 6 emails over 14 days, per the guide
-- [ ] Exit conditions set — stop on `Call Booked` and on the `Qualified` tag
-- [ ] Every email contains the booking link
-- [ ] **Publish** the workflow
-
+- [ ] First step is an **Internal Notification** to yourself, with no wait before it
+- [ ] Notification body uses `{{contact.Budget}}`, `{{contact.Timeline}}`, `{{contact.Lead Score}}`
+- [ ] `Add Tag: Qualified` follows it
+- [ ] Exit conditions set — stop on `Call Booked`, on the `Qualified` tag, and on Do Not Contact
+- [ ] **Publish** the workflow (the app only enrols into published workflows)
 - [ ] Copy the workflow ID (GHL → Settings → Workflows, or the workflow's URL)
 
-> All three classifications get enrolled — the app enrols everyone. The workflow's internal If/Else
-> decides that `HOT` leads skip the drip and get the booking CTA instead.
+> **No sending domain yet?** That is fine, and Variant A is built for it. An Internal
+> Notification goes to your own GHL inbox and needs no verified sender, so a HOT lead still
+> alerts you the moment it lands. The six nurture emails in §3–§5 of the guide are an additive
+> upgrade once you have a domain — you insert steps into this same workflow, you do not rebuild
+> it. See "Choose a variant first" in the guide.
+
+> All three classifications get enrolled — the app enrols everyone, including HOT leads. The
+> notification is unconditional; Variant B's If/Else is what later stops hot leads being dripped.
 
 ---
 
@@ -246,7 +265,11 @@ GHL → **Settings → Calendars** → **Discovery Call** → **Edit**
 
 ## Phase 7 — Verify email sending
 
-Nurture emails silently fail if the sender is not verified.
+**Skip this phase if you built the workflow as Variant A** (notifications only, no email steps).
+It is the one phase that can be deferred: with no `Send Email` action in the workflow there is
+nothing to fail, and the funnel is complete without it.
+
+If you did add the nurture emails, they silently fail if the sender is not verified.
 
 - [ ] GHL → **Settings → Domains** — confirm the sending domain shows **verified**
 - [ ] Send a test email to yourself from the `Lead Nurture` workflow
@@ -401,12 +424,15 @@ Setup warnings name the resource. Match them here:
 | `Could not read custom fields` | Custom fields — read |
 | `Could not create field` | Custom fields — write |
 | `Could not read tags` / `Could not create tag` | Tags — read / write |
-| `Could not read pipelines` / `Could not create pipeline` | Opportunities — read / write |
 | `Could not read calendars` / `Could not create the discovery calendar` | Calendars — read / write |
 | `Could not read workflows` | Workflows — read |
 | `Could not read forms` | Forms — read |
 | `Could not read users` | Users — read |
+| `Could not read pipelines` | Opportunities — read |
 | Setup returns `Forbidden` on every call | You used a legacy API key, not a Private Integration |
+
+> `Could not create pipeline` is **not** a scope problem. GHL refuses pipeline administration to
+> Private Integration tokens whatever scopes are ticked — build the pipeline in the UI (Phase 5.1).
 
 ## Appendix B — Scoring reference
 

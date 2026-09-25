@@ -9,25 +9,100 @@ built by hand. Budget about 15 minutes.
 
 ---
 
-## 1. Create the workflow
+## 0. Choose a variant first
+
+A sending domain is what makes cold nurture email deliverable, and it is not needed for the
+workflow to exist or for the rest of the funnel to work. GHL's **Internal Notification** action
+delivers to your own user inbox and does **not** require a verified sender domain.
+
+| | Variant A — start here | Variant B — add later |
+|---|---|---|
+| Needs a domain | No | Yes |
+| HOT lead | Instant notification in GHL + `Qualified` tag | Notification **and** a booking CTA email |
+| Nurture lead | Tagged for follow-up, no automated email | 6 emails over 14 days |
+| Setup | 5 minutes | + the six email steps in §3–§5 |
+
+**Build Variant A first.** Every step in it is kept in Variant B, so upgrading later is purely
+additive — you insert email steps into a workflow you already published. Nothing is rebuilt and
+no lead is re-enrolled.
+
+Skip to §1A for Variant A. §3–§5 are the Variant B add-on.
+
+---
+
+## 1A. Variant A — notifications and tags (no domain required)
 
 **Workflows → New Workflow → Start from scratch**
 
 | Setting | Value |
 |---|---|
 | Name | `Lead Nurture` |
-| Status | Draft until the checks in §6 pass, then Publish |
 | Enrolment | Allow re-enrolment: **off** (one pass per contact) |
-| Stop on reply | **on** |
 
-The exact name matters. If you name it something else, paste its workflow ID into the setup
-wizard instead — the wizard accepts either the name `Lead Nurture` or an explicit ID.
+The exact name matters — the app finds this workflow by name. If you name it something else,
+paste its ID into the setup wizard instead.
+
+### Step 1 — Internal Notification
+
+Add an **Internal Notification** action as the first step.
+
+- **Recipient:** yourself (the workflow's owner)
+- **Subject:** `HOT lead — {{contact.name}}`
+- **Body:**
+
+  > `{{contact.name}}` just applied.
+  >
+  > Budget: `{{contact.Budget}}` · Timeline: `{{contact.Timeline}}` · Score: `{{contact.Lead Score}}`
+  >
+  > An opportunity is already open in Agency Funnel at **Qualified**. Call them.
+
+- **Send immediately** — no wait step before this one. A hot lead is the one notification you
+  actually want in real time.
+
+### Step 2 — Add Tag
+
+Add an **Add Tag** action: `Qualified`.
+
+This mirrors what the app already does for HOT leads and gives the workflow an exit hook: the
+`Qualified` tag is one of the stop conditions in §4, so once a lead is qualified the nurture
+branch can never re-engage them.
+
+### Step 3 — Exit conditions
+
+Set the workflow's **stop on** conditions so it never fires on someone who converted:
+
+- Contact has opportunity in stage `Call Booked` → stop
+- Contact has tag `Qualified` → stop
+- Contact is marked Do Not Contact → stop
+
+### Step 4 — Publish
+
+- [ ] Workflow named exactly `Lead Nurture`
+- [ ] Internal Notification is the first step, no wait before it
+- [ ] Notification body uses the `{{contact.Budget}}` / `{{contact.Timeline}}` merge fields
+- [ ] `Add Tag: Qualified` follows it
+- [ ] All three stop conditions set
+- [ ] **Published** (not draft — the app only enrols into published workflows)
+- [ ] Workflow ID copied
+
+Then return to `/setup` and paste the workflow ID. That is Variant A complete: hot leads now
+alert you the moment they land, with a `Qualified` opportunity already waiting.
 
 ---
 
-## 2. The first step must be a branch
+## Variant B — the email sequence
 
-Immediately after the trigger, add an **If/Else** condition:
+Everything below is the upgrade you apply once you have a verified sending domain. Add it to
+the workflow from §1A; do not rebuild it.
+
+Add a **Wait** step, then an **If/Else**, in front of the §1A notification so the two email
+paths can diverge. Keep the notification on both branches — it stays useful when email is.
+
+---
+
+## 2. Add the branch in front of the notification
+
+Insert a **Wait** step, then an **If/Else**, ahead of the §1A notification:
 
 ```
 Contact → Lead Status  is  equal to  HOT
@@ -36,8 +111,8 @@ Contact → Lead Status  is  equal to  HOT
 - **Yes → Booking CTA branch** (§3). Hot leads have already cleared the bar; do not drip them.
 - **No → Nurture sequence** (§4).
 
-The app writes `Lead Status` on every submission, so this condition is what keeps hot leads
-from being nurtured.
+Both branches keep the §1A notification. The app writes `Lead Status` on every submission, so
+this condition is what keeps hot leads from being nurtured.
 
 ---
 
@@ -191,19 +266,33 @@ text alternative.
 
 ## 6. Before you publish
 
+### 6.1 Every variant
+
 The setup wizard already created the contact fields, tags, and pipeline. Confirm each line:
 
-- [ ] `Lead Status` has options `HOT`, `WARM`, `NURTURE` (the wizard reports any field whose options it could not set)
-- [ ] `Budget` has all five options
+- [ ] `Lead Status` has options `HOT`, `WARM`, `NURTURE`
+- [ ] `Budget` has all five options (note the en dashes: `$500–$1,500`, not a hyphen)
 - [ ] `Timeline` has all four options
 - [ ] `Service` has all seven options
-- [ ] Condition 1 in §2 reads `Lead Status` = `HOT`
-- [ ] Every email has a booking link
-- [ ] Sender domain is verified — send a test email to yourself
-- [ ] Exit conditions from §4 are set
-- [ ] Publish the workflow, then paste its ID into the setup wizard
-- [ ] Re-run setup so the stored ID is saved
+- [ ] `Existing Website` has options `Yes`, `No`
+- [ ] All three stop conditions are set (`Call Booked`, `Qualified`, Do Not Contact)
+- [ ] **Published**, not left as a draft — the app only enrols into published workflows
+- [ ] Workflow ID pasted into the setup wizard, and setup re-run so the ID is stored
 
 If the wizard reported a field as `Created, options needed`, fix that field **before** testing.
 GHL silently discards picklist values that are not real options, so a lead can score as
 `NURTURE` while its budget is empty.
+
+### 6.2 Variant A only
+
+- [ ] Internal Notification is the first step, with no wait before it
+- [ ] `Add Tag: Qualified` follows the notification
+
+Done. A HOT lead will notify you the second it lands. Skip the rest.
+
+### 6.3 Variant B only
+
+- [ ] Condition in §2 reads `Lead Status` = `HOT`
+- [ ] Every email has a booking link
+- [ ] Every email has a plain-text alternative
+- [ ] Sender domain is verified — send a test email to yourself and confirm it is not in spam

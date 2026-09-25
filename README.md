@@ -19,7 +19,7 @@ Next.js landing page  →  /apply  (qualification form)
   ↓
 POST /api/leads
   ├── score the lead (deterministic, src/lib/scoring.ts)
-  ├── upsert contact to GHL with 13 custom fields
+  ├── upsert contact to GHL with 12 custom fields
   ├── add the HOT / WARM / NURTURE tag
   ├── create an opportunity in Agency Funnel (HOT → Qualified, else New Lead)
   └── enrol the contact in the Lead Nurture workflow
@@ -47,15 +47,28 @@ encrypted token, and resource IDs — never lead data.
 
 ### What the app provisions on setup
 
-13 contact custom fields (4 with verified options), 5 tags, the `Agency Funnel` pipeline with 8
-stages, and a 30-minute `Discovery Call` calendar. Provisioning is idempotent and never deletes or
-rewrites an existing resource.
+12 contact custom fields (5 with verified options) and 4 routing tags, plus a 30-minute
+`Discovery Call` calendar. Provisioning is idempotent and never deletes or rewrites an
+existing resource.
 
 ### What has to be done in GHL
 
-Three things, all documented: connect the calendar host, build the nurture workflow from
-[`NURTURE_WORKFLOW.md`](NURTURE_WORKFLOW.md), and verify the email sender. See
+Three things, all documented: create the `Agency Funnel` pipeline, connect the calendar host, and
+build the nurture workflow from [`NURTURE_WORKFLOW.md`](NURTURE_WORKFLOW.md). See
 [`HANDOVER.md`](HANDOVER.md).
+
+A verified **sending domain** is a fourth, and it is the only one that can be deferred. It is
+needed for the nurture *emails* to reach cold leads, not for the funnel to work — the app never
+sends email itself, it only enrols contacts. `NURTURE_WORKFLOW.md` Variant A runs on GHL's
+Internal Notification, which needs no sender domain, so a HOT lead still alerts you the moment
+it lands.
+
+> **GHL does not let API tokens create pipelines or workflows.** A Private Integration with
+> Opportunities read & write can create opportunities (`POST /opportunities/` → 201) but gets
+> `401 The token is not authorized for this scope` on `POST /opportunities/pipelines`. The
+> pipeline must be built in the UI. Name it `Agency Funnel` with the eight stage names in
+> [`RUNBOOK.md`](RUNBOOK.md) Phase 5 and the next setup run detects it automatically — no
+> ID to paste, and no code change.
 
 ---
 
@@ -142,8 +155,9 @@ DML.
   per-instance and a determined attacker can bypass them by spreading requests. This stops casual
   abuse, not a targeted one. A shared store (Upstash, Vercel KV) would be needed to make it
   durable; `allowLeadSubmission` is the seam to swap.
-- **Workflows cannot be provisioned by API.** GHL's workflow API is read-only, so the nurture
-  sequence is built in the GHL UI. The app handles enrolment.
+- **Workflows and pipelines cannot be provisioned by API.** GHL's workflow API is read-only, and
+  its pipeline endpoints reject Private Integration tokens outright, so both are built in the GHL
+  UI. The app detects both by name and handles enrolment.
 - **A calendar needs a connected host.** The app can create the calendar and its slot configuration,
   but real availability requires the host to connect Google or Outlook in GHL.
 - **`/api/health` is unauthenticated** and reports whether a database and GHL are configured. It

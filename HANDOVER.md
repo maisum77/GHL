@@ -13,15 +13,18 @@ Everything the funnel does automatically, and the four things that must be done 
 | Piece | Who builds it |
 |---|---|
 | Landing page, qualification form, booking page, dashboard | The app — deployed |
-| 13 contact qualification fields (with options) | The app — on setup |
-| 5 routing tags (HOT / WARM / NURTURE / Qualified / Nurture) | The app — on setup |
-| `Agency Funnel` pipeline with 8 stages | The app — on setup |
+| 12 contact qualification fields (with options) | The app — on setup |
+| 4 routing tags (HOT / WARM / NURTURE / Qualified) | The app — on setup |
 | `Discovery Call` calendar, 30-minute slots | The app — on setup |
 | Contact creation, scoring, tagging, opportunity, nurture enrolment | The app — on every lead |
+| **`Agency Funnel` pipeline, 8 stages** | **You** — GHL's API refuses pipeline writes |
 | **Calendar host connection** | **You** |
 | **`Lead Nurture` workflow** | **You** — from `NURTURE_WORKFLOW.md` |
-| **Verified email sender** | **You** |
+| **Verified email sender** | **You** — *deferrable; needed only for the nurture emails* |
 | **Form and booking URLs** | **You** — copied from GHL |
+
+> GHL lowercases every tag it stores, so `NURTURE` and `Nurture` are one tag. There are four
+> routing tags, not five.
 
 ---
 
@@ -68,8 +71,8 @@ failure mode where GHL silently drops dropdown options:
 GHL_TOKEN=your-private-token GHL_LOCATION_ID=your-location-id npm run verify:ghl -- --dry-run
 ```
 
-`--dry-run` only reads. It confirms the location, all 13 fields, **the options on the 4 picklist
-fields**, the 5 tags, and the pipeline stages.
+`--dry-run` only reads. It confirms the location, all 12 fields, **the options on the 5 picklist
+fields**, the 4 tags, and the pipeline stages.
 
 Fix anything it reports, then run the full pass to exercise the write path:
 
@@ -112,7 +115,7 @@ In GHL: **Settings → Custom Fields → Contact → `<field name>` → Edit →
 options the wizard listed, then re-run setup. It will report `Created` or `Already existed` with no
 outstanding options.
 
-The four fields that need them, with their required options:
+The five fields that need them, with their required options:
 
 | Field | Options |
 |---|---|
@@ -120,10 +123,30 @@ The four fields that need them, with their required options:
 | `Budget` | Under $500 · $500–$1,500 · $1,500–$3,000 · $3,000–$5,000 · $5,000+ |
 | `Timeline` | Immediately · Within 30 days · 1–3 months · Just researching |
 | `Lead Status` | HOT · WARM · NURTURE |
+| `Existing Website` | Yes · No |
 
 ---
 
-## 6. Build the nurture workflow
+## 6. Build the pipeline and the nurture workflow
+
+### 6.1 The `Agency Funnel` pipeline
+
+GHL → **Opportunities → Pipelines → Create**, named exactly `Agency Funnel`, with these eight
+stages in this order:
+
+```
+New Lead · Qualified · Call Booked · Discovery Completed
+Proposal Sent · Negotiation · Won · Lost
+```
+
+The app finds the pipeline by name on its next run, so there is no ID to paste. Stage names must
+match exactly — the app looks them up by name when placing an opportunity.
+
+> This is not a permissions problem. A Private Integration with Opportunities read & write can
+> create opportunities but receives `401 The token is not authorized for this scope` on
+> `POST /opportunities/pipelines`. GHL does not expose pipeline administration to API tokens.
+
+### 6.2 The `Lead Nurture` workflow
 
 Follow **[NURTURE_WORKFLOW.md](NURTURE_WORKFLOW.md)**. Roughly 15 minutes: one HOT branch and a
 six-touch nurture sequence. The app enrols every lead into it automatically, so there is nothing to
@@ -195,9 +218,10 @@ finished, and every downstream workflow condition is reading nothing.
 | `Missing production configuration` | An env var is unset on the deployment | Set all four required variables |
 | Field shows `Created, options needed` | GHL discarded the options | §5, then re-run setup |
 | Contact has no budget or timeline | Same as above — values were dropped | §5 |
-| Opportunity not created | No pipeline, or the stage name is missing | Re-run setup; check the warnings |
+| Opportunity not created | No pipeline, or the stage name is missing | Build the pipeline per §6, then re-run setup |
 | Lead has no tag | The tag is missing from the location | Re-run setup; it creates HOT/WARM/NURTURE |
 | Lead not enrolled in nurture | No workflow ID saved | Publish the workflow, paste its ID, re-run setup |
+| `Could not create pipeline` | GHL refuses pipeline writes to API tokens | Not a scope problem. Build the pipeline in the UI, per §6 |
 | Calendar shows no times | Host has not connected an external calendar | §7 |
 | Nurture emails do not arrive | Sender domain not verified | Verify in GHL, then send a test email |
 | `Too many submissions from this connection` | Rate limit hit | Wait 10 minutes |

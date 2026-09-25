@@ -28,7 +28,7 @@ Vercel Next.js landing page
 Qualification form (local, or GHL form embed when configured)
   ↓
 POST /api/leads — scoring, routing, and provisioning all happen here
-  ├── upsert GHL Contact with the 13 qualification fields
+  ├── upsert GHL Contact with the 12 qualification fields
   ├── apply the HOT / WARM / NURTURE tag
   ├── create an Opportunity (HOT → Qualified, otherwise New Lead)
   └── enrol the contact in the Lead Nurture workflow
