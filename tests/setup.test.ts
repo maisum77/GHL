@@ -28,8 +28,24 @@ describe("connectAndProvision", () => {
 
     // Every expected field is attempted, whether or not it already exists.
     const fieldNames = result.record.fieldReports.map((report) => report.name);
-    expect(fieldNames).toHaveLength(13);
+    expect(fieldNames).toHaveLength(12);
+    // `Website` is deliberately absent: GHL rejects a custom field that shadows the
+    // standard contact website field, and the lead route writes to that directly.
+    expect(fieldNames).not.toContain("Website");
     expect(state.customFields.length + 0).toBeGreaterThan(0);
+  });
+
+  it("keys the tag manifest by canonical name even though GHL lowercases tags", async () => {
+    const { state } = stubGhlFetch();
+    // GHL stores every tag lowercased, whatever case it was created with.
+    state.tags = [{ id: "tag-hot", name: "hot" }];
+
+    const result = await connectAndProvision({ token: testToken, locationId: testLocationId });
+
+    // The lead route looks up manifest.tags["HOT"]; a raw-name key would silently
+    // leave every lead untagged.
+    expect(result.record.manifest.tags.HOT).toBe("tag-hot");
+    expect(result.record.manifest.tags["Qualified"]).toBeDefined();
   });
 
   it("provisions the discovery calendar with 30-minute slots", async () => {

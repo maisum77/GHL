@@ -104,28 +104,39 @@ describe("GhlClient writes", () => {
     expect(JSON.parse(String(fetchMock.mock.calls[0][1]?.body))).toEqual({ eventStartTime: "2026-01-01T00:00:00.000Z" });
   });
 
-  it("posts option-bearing fields to the v3 route with an options array", async () => {
+  it("posts option-bearing fields to the location route as a plain string array", async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(JSON.stringify({ customField: { id: "f1", name: "Budget" } }), { status: 201 })
     );
     vi.stubGlobal("fetch", fetchMock);
     const client = new GhlClient("private-token", "location-1");
 
-    await client.createCustomFieldWithOptions("location-1", "Budget", ["$5,000+", "Other"]);
+    await client.createCustomField("location-1", "Budget", "SINGLE_OPTIONS", ["$5,000+", "Other"]);
 
-    expect(fetchMock.mock.calls[0][0]).toBe("https://services.leadconnectorhq.com/custom-fields");
+    // The v3 /custom-fields route 404s, and this route rejects the object option form
+    // with "v.trim is not a function".
+    expect(fetchMock.mock.calls[0][0]).toBe(
+      "https://services.leadconnectorhq.com/locations/location-1/customFields"
+    );
     expect(JSON.parse(String(fetchMock.mock.calls[0][1]?.body))).toEqual({
-      locationId: "location-1",
       name: "Budget",
       dataType: "SINGLE_OPTIONS",
       model: "contact",
       placeholder: "Budget",
-      showInForms: true,
-      options: [
-        { key: "$5,000+", label: "$5,000+" },
-        { key: "Other", label: "Other" }
-      ]
+      options: ["$5,000+", "Other"]
     });
+  });
+
+  it("omits options entirely for a field that has none", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ customField: { id: "f1", name: "Company" } }), { status: 201 })
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const client = new GhlClient("private-token", "location-1");
+
+    await client.createCustomField("location-1", "Company", "TEXT");
+
+    expect(JSON.parse(String(fetchMock.mock.calls[0][1]?.body))).not.toHaveProperty("options");
   });
 
   it("creates a calendar with the location applied to the body", async () => {

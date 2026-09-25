@@ -13,7 +13,7 @@ afterEach(() => {
 });
 
 describe("option-bearing custom fields", () => {
-  it("creates SINGLE_OPTIONS fields through the v3 route and verifies the options stuck", async () => {
+  it("sends options as plain strings on the location route and verifies they stuck", async () => {
     const { state } = stubGhlFetch();
 
     const result = await connectAndProvision({ token: testToken, locationId: testLocationId });
@@ -22,39 +22,50 @@ describe("option-bearing custom fields", () => {
     expect(service?.outcome).toBe("created");
     expect(result.created).toContain("field:Service");
 
-    // The v3 route is the one that accepts `options`.
-    const v3Calls = state.calls.filter((call) => call.url.endsWith("/custom-fields"));
-    expect(v3Calls.length).toBeGreaterThan(0);
+    // GHL rejects the object form with "v.trim is not a function", so options must be
+    // sent as bare strings.
+    const create = state.calls.find(
+      (call) => call.method === "POST" && call.url.includes(`/locations/${testLocationId}/customFields`) &&
+        (call.body as { name?: string })?.name === "Budget"
+    );
+    expect((create?.body as { options?: unknown }).options).toEqual([
+      "Under $500",
+      "$500–$1,500",
+      "$1,500–$3,000",
+      "$3,000–$5,000",
+      "$5,000+"
+    ]);
 
     const options = result.record.manifest.customFieldOptions["Budget"];
     expect(options).toContain("$5,000+");
     expect(options).toHaveLength(5);
   });
 
-  it("falls back to the location route when the v3 route rejects the token", async () => {
-    const { state } = stubGhlFetch({
-      "https://services.leadconnectorhq.com/custom-fields": () =>
-        Response.json({ message: "Forbidden" }, { status: 403 })
-    });
+  it("never calls the v3 custom-fields route, which 404s", async () => {
+    const { state } = stubGhlFetch();
 
     await connectAndProvision({ token: testToken, locationId: testLocationId });
 
-    const locationRouteCalls = state.calls.filter(
-      (call) => call.method === "POST" && call.url.includes(`/locations/${testLocationId}/customFields`)
+    expect(state.calls.filter((call) => call.url.endsWith("/custom-fields"))).toHaveLength(0);
+  });
+
+  it("gives the Existing Website checkbox real options", async () => {
+    const { state } = stubGhlFetch();
+
+    const result = await connectAndProvision({ token: testToken, locationId: testLocationId });
+
+    const create = state.calls.find(
+      (call) => call.method === "POST" && call.url.includes(`/locations/${testLocationId}/customFields`) &&
+        (call.body as { name?: string })?.name === "Existing Website"
     );
-    expect(locationRouteCalls.length).toBeGreaterThan(0);
+    // CHECKBOX is a multi-select in GHL and is rejected outright without options.
+    expect((create?.body as { dataType?: string }).dataType).toBe("CHECKBOX");
+    expect((create?.body as { options?: unknown }).options).toEqual(["Yes", "No"]);
+    expect(result.record.fieldReports.find((r) => r.name === "Existing Website")?.outcome).toBe("created");
   });
 
   it("reports created_missing_options instead of claiming success when GHL drops them", async () => {
-    // GHL answers 201 for a SINGLE_OPTIONS field on the location route but stores no
-    // options, because textBoxListOptions only applies to TEXTBOX_LIST.
-    stubGhlFetch(
-      {
-        "https://services.leadconnectorhq.com/custom-fields": () =>
-          Response.json({ message: "Forbidden" }, { status: 403 })
-      },
-      { dropOptionsOnLocationRoute: true }
-    );
+    stubGhlFetch({}, { dropOptionsOnLocationRoute: true });
 
     const result = await connectAndProvision({ token: testToken, locationId: testLocationId });
 

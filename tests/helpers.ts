@@ -93,16 +93,9 @@ export function stubGhlFetch(
       return Response.json({ calendar: created }, { status: 201 });
     }
     if (url.endsWith("/custom-fields")) {
-      const payload = body as Record<string, unknown>;
-      const created = {
-        id: `field-${payload.name}`,
-        name: payload.name,
-        dataType: payload.dataType,
-        model: "contact",
-        picklistOptions: (payload.options as Array<{ key: string; label: string }> | undefined)?.map((o) => o.label) ?? []
-      };
-      state.customFields.push(created);
-      return Response.json({ customField: created }, { status: 201 });
+      // Measured against the live API: this route 404s. The app must provision through
+      // the location route, so a regression shows up here rather than passing silently.
+      return Response.json({ message: "Not found" }, { status: 404 });
     }
     if (url.includes("/customFields")) {
       const payload = body as Record<string, unknown>;
@@ -111,9 +104,11 @@ export function stubGhlFetch(
         name: payload.name,
         dataType: payload.dataType,
         model: "contact",
-        // Mirrors GHL: the location route accepts textBoxListOptions for a SINGLE_OPTIONS
-        // field, returns 201, and stores nothing.
-        picklistOptions: options.dropOptionsOnLocationRoute ? [] : []
+        // GHL stores `options` when it is an array of plain strings, and rejects the
+        // object form. dropOptionsOnLocationRoute simulates an account that loses them.
+        picklistOptions: options.dropOptionsOnLocationRoute
+          ? []
+          : ((payload.options as string[] | undefined) ?? [])
       };
       state.customFields.push(created);
       return Response.json({ customField: created }, { status: 201 });
