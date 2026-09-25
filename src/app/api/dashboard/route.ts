@@ -21,19 +21,19 @@ export async function GET(request: NextRequest) {
 
   const installation = await getInstallation();
   if (!installation) {
-    return NextResponse.json({ connected: false, leads: 0, opportunities: [] });
+    return NextResponse.json({ connected: false, opportunityTotal: 0, opportunities: [] });
   }
 
   const response: {
     connected: boolean;
     locationName: string;
-    leads: number;
+    opportunityTotal: number;
     opportunities: OpportunitySummary[];
     error?: string;
   } = {
     connected: true,
     locationName: installation.locationName,
-    leads: 0,
+    opportunityTotal: 0,
     opportunities: []
   };
 
@@ -41,7 +41,27 @@ export async function GET(request: NextRequest) {
     const token = decryptSecret(installation.encryptedToken, installation.locationId);
     const client = new GhlClient(token, installation.locationId);
     const result = await client.searchOpportunities();
-    response.leads = result.total;
+
+    // The search endpoint returns pipelineId and pipelineStageId but never the names, so
+    // resolve them from the location's pipelines. Built from every pipeline, not just the
+    // connected one, because the location may hold opportunities we did not create.
+    const stageNames = new Map<string, string>();
+    try {
+      for (const pipeline of await client.getPipelines()) {
+        for (const stage of pipeline.stages ?? []) {
+          if (stage.id) {
+            stageNames.set(stage.id, stage.name);
+          }
+        }
+      }
+    } catch {
+      // Fall back to the connected pipeline's stages from setup.
+      for (const [name, id] of Object.entries(installation.manifest.pipelineStageIds)) {
+        stageNames.set(id, name);
+      }
+    }
+
+    response.opportunityTotal = result.total;
     response.opportunities = result.opportunities.slice(0, 8).map((opportunity) => {
       const summary = opportunity as OpportunitySummary;
       return {
@@ -49,7 +69,7 @@ export async function GET(request: NextRequest) {
         name: summary.name,
         status: summary.status,
         pipelineStageId: summary.pipelineStageId,
-        pipelineStageName: summary.pipelineStageName
+        pipelineStageName: summary.pipelineStageId ? stageNames.get(summary.pipelineStageId) : undefined
       };
     });
   } catch (error) {

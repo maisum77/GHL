@@ -22,7 +22,7 @@ const TOKEN = process.env.GHL_TOKEN || "";
 const LOCATION_ID = process.env.GHL_LOCATION_ID || "";
 
 const EXPECTED_FIELDS = [
-  "Company", "Website", "Service", "Challenge", "Budget", "Timeline",
+  "Company", "Service", "Challenge", "Budget", "Timeline",
   "Existing Website", "Lead Score", "Lead Status",
   "UTM Source", "UTM Medium", "UTM Campaign", "Landing Page"
 ];
@@ -34,7 +34,8 @@ const EXPECTED_OPTIONS = {
   "Lead Status": ["HOT", "WARM", "NURTURE"]
 };
 
-const EXPECTED_TAGS = ["HOT", "WARM", "NURTURE", "Qualified", "Nurture"];
+// GHL stores tag names lowercased, so "NURTURE" and "Nurture" are one tag, not two.
+const EXPECTED_TAGS = ["HOT", "WARM", "NURTURE", "Qualified"];
 const PIPELINE_NAME = "Agency Funnel";
 const PIPELINE_STAGES = ["New Lead", "Qualified", "Call Booked", "Discovery Completed", "Proposal Sent", "Negotiation", "Won", "Lost"];
 
@@ -137,11 +138,14 @@ async function main() {
   let pipeline = null;
 
   heading(1, "Location");
-  const location = await api(`/locations/${encodeURIComponent(LOCATION_ID)}`);
+  // GHL returns this route wrapped: { location: {...}, traceId }. Accept the bare shape
+  // too so a future API change does not read as "wrong location".
+  const locationPayload = await api(`/locations/${encodeURIComponent(LOCATION_ID)}`);
+  const location = locationPayload?.location ?? locationPayload;
   if (location && location.id === LOCATION_ID) {
     pass(`location resolved: ${location.name || "(unnamed)"}`);
   } else {
-    fail("the API returned a different location than requested", redact(location));
+    fail("the API returned a different location than requested", redact(locationPayload));
   }
 
   heading(2, "Qualification fields");

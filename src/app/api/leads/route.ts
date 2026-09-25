@@ -80,12 +80,11 @@ export async function POST(request: NextRequest) {
   const client = new GhlClient(token, installation.locationId);
   const fieldValues: Record<string, string> = {
     Company: input.company ?? "",
-    Website: input.website ?? "",
     Service: input.service,
     Challenge: input.challenge,
     Budget: input.budget,
     Timeline: input.timeline,
-    "Existing Website": String(input.existingWebsite),
+    "Existing Website": input.existingWebsite ? "Yes" : "No",
     "Lead Score": String(result.score),
     "Lead Status": result.status,
     "UTM Source": input.utmSource ?? "",

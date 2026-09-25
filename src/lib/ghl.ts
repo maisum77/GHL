@@ -138,36 +138,6 @@ export class GhlClient {
     return arrayFrom<GhlCustomField>(payload, "customFields");
   }
 
-  /**
-   * The location-scoped create route only understands `textBoxListOptions`, which GHL
-   * silently discards for SINGLE_OPTIONS fields. The v3 route accepts `options` instead,
-   * so option-bearing fields try that first and fall back to the location route.
-   */
-  async createCustomFieldWithOptions(
-    locationId: string,
-    name: string,
-    options: string[]
-  ): Promise<GhlCustomField> {
-    const body = {
-      locationId,
-      name,
-      dataType: "SINGLE_OPTIONS",
-      model: "contact",
-      placeholder: name,
-      showInForms: true,
-      options: options.map((label) => ({ key: label, label }))
-    };
-    const payload = await this.request<unknown>("/custom-fields", {
-      method: "POST",
-      body: JSON.stringify(body)
-    });
-    const field = objectFrom<GhlCustomField>(payload, "customField") ?? objectFrom<GhlCustomField>(payload, "field");
-    if (!field) {
-      throw new GhlApiError("GHL returned an invalid custom field response", 502);
-    }
-    return field;
-  }
-
   async getTags(locationId = this.locationId): Promise<GhlTag[]> {
     if (!locationId) {
       throw new Error("A GHL location ID is required");
@@ -216,6 +186,12 @@ export class GhlClient {
     return arrayFrom<GhlNamedResource>(payload, "users");
   }
 
+  /**
+   * GHL's location-scoped create route takes `options` as an array of plain strings. It
+   * rejects the object form (`{ key, label }`) with "v.trim is not a function" and
+   * ignores `textBoxListOptions` entirely, so an option-bearing SINGLE_OPTIONS or
+   * CHECKBOX field created without this is stored with no options at all.
+   */
   async createCustomField(locationId: string, name: string, dataType: string, options?: string[]): Promise<GhlCustomField> {
     const body: Record<string, unknown> = {
       name,
@@ -224,7 +200,7 @@ export class GhlClient {
       placeholder: name
     };
     if (options?.length) {
-      body.textBoxListOptions = options.map((label) => ({ label, prefillValue: label }));
+      body.options = [...options];
     }
     const payload = await this.request<unknown>(`/locations/${encodeURIComponent(locationId)}/customFields`, {
       method: "POST",

@@ -14,7 +14,7 @@ type Opportunity = {
 type DashboardData = {
   connected: boolean;
   locationName?: string;
-  leads: number;
+  opportunityTotal: number;
   opportunities: Opportunity[];
   error?: string;
 };
@@ -93,7 +93,7 @@ export function DashboardClient() {
     <div className="dashboard-grid">
       <div className="dashboard-card dashboard-card-dark">
         <h2>Pipeline snapshot</h2>
-        <p className="metric-value">{data.leads}</p>
+        <p className="metric-value">{data.opportunityTotal}</p>
         <p className="metric-label">Opportunities visible in {data.locationName ?? "the connected location"}</p>
         {data.error ? <p className="form-error" style={{ marginTop: 22 }}><WarningCircle size={15} /> {data.error}</p> : null}
       </div>

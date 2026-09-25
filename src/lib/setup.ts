@@ -48,13 +48,15 @@ type FieldDefinition = {
 };
 
 const fieldDefinitions: FieldDefinition[] = [
+  // No `Website` field: GHL rejects a custom field that shadows the standard contact
+  // website field, and the lead route already writes to that standard field directly.
   { name: "Company", dataType: "TEXT" },
-  { name: "Website", dataType: "TEXT" },
   { name: "Service", dataType: "SINGLE_OPTIONS", options: ["Website Development", "Landing Page", "SaaS / Web Application", "AI Automation", "CRM / Funnel", "E-commerce", "Other"] },
   { name: "Challenge", dataType: "TEXT" },
   { name: "Budget", dataType: "SINGLE_OPTIONS", options: ["Under $500", "$500–$1,500", "$1,500–$3,000", "$3,000–$5,000", "$5,000+"] },
   { name: "Timeline", dataType: "SINGLE_OPTIONS", options: ["Immediately", "Within 30 days", "1–3 months", "Just researching"] },
-  { name: "Existing Website", dataType: "CHECKBOX" },
+  // CHECKBOX is a multi-select in GHL, so it needs options or the create call is rejected.
+  { name: "Existing Website", dataType: "CHECKBOX", options: ["Yes", "No"] },
   { name: "Lead Score", dataType: "NUMERICAL" },
   { name: "Lead Status", dataType: "SINGLE_OPTIONS", options: ["HOT", "WARM", "NURTURE"] },
   { name: "UTM Source", dataType: "TEXT" },
@@ -63,7 +65,10 @@ const fieldDefinitions: FieldDefinition[] = [
   { name: "Landing Page", dataType: "TEXT" }
 ];
 
-const tagNames = ["HOT", "WARM", "NURTURE", "Qualified", "Nurture"];
+// GHL stores tag names lowercased, so `NURTURE` and `Nurture` are the same tag. The
+// routing tag is the classification; a separate "in nurture" tag would need a
+// distinct name to exist at all.
+const tagNames = ["HOT", "WARM", "NURTURE", "Qualified"];
 const pipelineName = "Agency Funnel";
 const pipelineStages = ["New Lead", "Qualified", "Call Booked", "Discovery Completed", "Proposal Sent", "Negotiation", "Won", "Lost"];
 const discoveryCalendarName = "Discovery Call";
@@ -98,9 +103,9 @@ function missingOptions(field: GhlCustomField, definition: FieldDefinition): str
 }
 
 /**
- * Creates one contact custom field and proves the result. A 2xx from GHL is not enough:
- * the location-scoped route returns success while discarding options for SINGLE_OPTIONS
- * fields, so every option-bearing field is read back before it is reported as usable.
+ * Creates one contact custom field and proves the result. The options are read back rather
+ * than trusted from the create response, so a field GHL stored without its options is
+ * reported as unusable instead of being counted as provisioned.
  */
 async function provisionField(
   client: GhlClient,
@@ -113,30 +118,11 @@ async function provisionField(
   const hasOptions = (definition.options?.length ?? 0) > 0;
   let field: GhlCustomField | undefined;
 
-  if (hasOptions) {
-    try {
-      field = await client.createCustomFieldWithOptions(locationId, definition.name, definition.options ?? []);
-    } catch (error) {
-      const status = error instanceof GhlApiError ? error.status : 0;
-      if (status !== 401 && status !== 403 && status !== 404 && status !== 405) {
-        fieldReports.push({ name: definition.name, outcome: "failed", detail: safeMessage(error, token) });
-        return;
-      }
-      // The v3 route is not reachable with this token; fall back to the location route.
-      try {
-        field = await client.createCustomField(locationId, definition.name, definition.dataType, definition.options);
-      } catch (fallbackError) {
-        fieldReports.push({ name: definition.name, outcome: "failed", detail: safeMessage(fallbackError, token) });
-        return;
-      }
-    }
-  } else {
-    try {
-      field = await client.createCustomField(locationId, definition.name, definition.dataType);
-    } catch (error) {
-      fieldReports.push({ name: definition.name, outcome: "failed", detail: safeMessage(error, token) });
-      return;
-    }
+  try {
+    field = await client.createCustomField(locationId, definition.name, definition.dataType, definition.options);
+  } catch (error) {
+    fieldReports.push({ name: definition.name, outcome: "failed", detail: safeMessage(error, token) });
+    return;
   }
 
   let verified = field;
@@ -183,7 +169,14 @@ function manifestFromResources(
           return [definition.name, found ? optionLabels(found) : []];
         })
     ),
-    tags: Object.fromEntries(tags.map((tag) => [tag.name, tag.id])),
+    // Keyed by the canonical name the app looks up, not by GHL's raw tag name: GHL
+    // lowercases tags on create, so a raw-name key would never match "HOT".
+    tags: Object.fromEntries(
+      tagNames.flatMap((canonical) => {
+        const found = tags.find((tag) => normalized(tag.name) === normalized(canonical));
+        return found ? [[canonical, found.id] as const] : [];
+      })
+    ),
     pipelineId: pipeline?.id,
     pipelineStageIds: Object.fromEntries((pipeline?.stages ?? []).map((stage) => [stage.name, stage.id])),
     calendarId: calendars.find((calendar) => normalized(calendar.name) === normalized(discoveryCalendarName))?.id,
@@ -271,17 +264,28 @@ export async function connectAndProvision(input: SetupInput): Promise<SetupResul
     }
   }
 
+  const manualSteps: string[] = [];
   let pipeline = pipelines.find((candidate) => normalized(candidate.name) === normalized(pipelineName));
   if (!pipeline) {
     try {
       pipeline = await client.createPipeline(locationId, pipelineName, pipelineStages);
       created.push(`pipeline:${pipelineName}`);
     } catch (error) {
-      warnings.push(`Could not create pipeline: ${safeMessage(error, token)}`);
+      // GHL does not grant pipeline administration to Private Integration tokens, even
+      // with Opportunities read & write: the opportunity endpoints answer 201 while
+      // POST /opportunities/pipelines answers 401. Creating the pipeline in the UI is
+      // the only route, and the next setup run picks it up by name.
+      const status = error instanceof GhlApiError ? error.status : 0;
+      if (status === 401 || status === 403) {
+        manualSteps.push(
+          `Create the "${pipelineName}" pipeline by hand in GHL (Opportunities \u2192 Pipelines) with these stages in order: ${pipelineStages.join(", ")}. Re-run setup afterwards and it will be detected automatically.`
+        );
+      } else {
+        warnings.push(`Could not create pipeline: ${safeMessage(error, token)}`);
+      }
     }
   }
 
-  const manualSteps: string[] = [];
   const discoveredCalendars = [...calendars];
   if (!discoveredCalendars.some((calendar) => normalized(calendar.name) === normalized(discoveryCalendarName))) {
     const hostUserId = input.calendarHostUserId?.trim() || users[0]?.id;
