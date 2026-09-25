@@ -254,6 +254,12 @@ Requires a valid setup session. Returns a small opportunity snapshot and does no
 
 ## 11. Verification
 
+### Setup procedure
+
+`RUNBOOK.md` is the ordered, phase-by-phase procedure for taking a new location from zero to a
+working funnel, including the exact picklist option values, the required token scopes, and a
+regression test for each lead classification. `HANDOVER.md` is the reference kept after go-live.
+
 ### Automated checks
 
 ```bash
@@ -261,6 +267,13 @@ npm run lint
 npm run typecheck
 npm test
 npm run build
+```
+
+### Credential verification
+
+```bash
+GHL_TOKEN=... GHL_LOCATION_ID=... npm run verify:ghl -- --dry-run
+GHL_TOKEN=... GHL_LOCATION_ID=... npm run verify:ghl
 ```
 
 ### Manual client acceptance test

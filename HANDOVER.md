@@ -2,6 +2,10 @@
 
 Everything the funnel does automatically, and the four things that must be done by hand.
 
+> **Setting this up for the first time?** Use **[`RUNBOOK.md`](RUNBOOK.md)** instead — it is the
+> linear, phase-by-phase checklist with every value spelled out. This document is the reference you
+> come back to once it is live.
+
 ---
 
 ## What you get

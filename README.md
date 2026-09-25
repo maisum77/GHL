@@ -61,6 +61,9 @@ Three things, all documented: connect the calendar host, build the nurture workf
 
 ## Local development
 
+**Never done this before?** Start with **[`RUNBOOK.md`](RUNBOOK.md)** — the complete ordered
+checklist from zero to a working funnel, with every option value spelled out.
+
 ```bash
 npm install
 cp .env.example .env.local   # optional: the app runs with no secrets in development
