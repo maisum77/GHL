@@ -42,9 +42,25 @@ Skip to §1A for Variant A. §3–§5 are the Variant B add-on.
 The exact name matters — the app finds this workflow by name. If you name it something else,
 paste its ID into the setup wizard instead.
 
-### Step 1 — Internal Notification
+### Step 1 — If/Else on `Lead Status`
 
-Add an **Internal Notification** action as the first step.
+**The app enrols every lead, not just hot ones.** A HOT-only notification therefore needs a
+branch, or a score-0 NURTURE enquiry pings you claiming an opportunity is waiting at
+*Qualified* when it is actually at *New Lead*. Alerts that are sometimes false are alerts you
+learn to ignore.
+
+Drag an **If/Else** action onto the canvas as the first step:
+
+```
+Contact → Lead Status  is  equal to  HOT
+```
+
+- **Yes →** Step 2
+- **No →** Step 5
+
+### Step 2 — Internal Notification
+
+On the **Yes** branch, add an **Internal Notification** action.
 
 - **Recipient:** yourself (the workflow's owner)
 - **Subject:** `HOT lead — {{contact.name}}`
@@ -56,18 +72,17 @@ Add an **Internal Notification** action as the first step.
   >
   > An opportunity is already open in Agency Funnel at **Qualified**. Call them.
 
-- **Send immediately** — no wait step before this one. A hot lead is the one notification you
+- **Send immediately** — no Wait step before this one. A hot lead is the one notification you
   actually want in real time.
 
-### Step 2 — Add Tag
+### Step 3 — Add Tag
 
-Add an **Add Tag** action: `Qualified`.
+Still on the **Yes** branch, add an **Add Tag** action: `Qualified`.
 
-This mirrors what the app already does for HOT leads and gives the workflow an exit hook: the
-`Qualified` tag is one of the stop conditions in §4, so once a lead is qualified the nurture
-branch can never re-engage them.
+This gives the workflow an exit hook: `Qualified` is one of the stop conditions in Step 4, so a
+lead who has already been qualified can never be re-engaged by a later run.
 
-### Step 3 — Exit conditions
+### Step 4 — Exit conditions
 
 Set the workflow's **stop on** conditions so it never fires on someone who converted:
 
@@ -75,18 +90,26 @@ Set the workflow's **stop on** conditions so it never fires on someone who conve
 - Contact has tag `Qualified` → stop
 - Contact is marked Do Not Contact → stop
 
-### Step 4 — Publish
+### Step 5 — The No branch
+
+Leave the **No** branch empty for now, or add a single **Add Tag**: `Nurture Sequence` so you can
+segment everyone currently in nurture from a single tag. Do not email anyone from this branch —
+that is Variant B, and it needs a verified sending domain.
+
+### Step 6 — Publish
 
 - [ ] Workflow named exactly `Lead Nurture`
-- [ ] Internal Notification is the first step, no wait before it
+- [ ] If/Else on `Lead Status = HOT` is the first step
+- [ ] Internal Notification is on the **Yes** branch, no Wait before it
 - [ ] Notification body uses the `{{contact.Budget}}` / `{{contact.Timeline}}` merge fields
-- [ ] `Add Tag: Qualified` follows it
+- [ ] `Add Tag: Qualified` follows the notification
 - [ ] All three stop conditions set
 - [ ] **Published** (not draft — the app only enrols into published workflows)
 - [ ] Workflow ID copied
 
-Then return to `/setup` and paste the workflow ID. That is Variant A complete: hot leads now
-alert you the moment they land, with a `Qualified` opportunity already waiting.
+Then return to `/setup` and paste the workflow ID. That is Variant A complete: hot leads alert
+you the moment they land, with a `Qualified` opportunity already waiting, and nobody else makes
+noise.
 
 ---
 
@@ -95,14 +118,14 @@ alert you the moment they land, with a `Qualified` opportunity already waiting.
 Everything below is the upgrade you apply once you have a verified sending domain. Add it to
 the workflow from §1A; do not rebuild it.
 
-Add a **Wait** step, then an **If/Else**, in front of the §1A notification so the two email
-paths can diverge. Keep the notification on both branches — it stays useful when email is.
+Extend the existing **If/Else** from §1A Step 1. The `Lead Status = HOT` branch you already have
+becomes the HOT email path; the **No** branch becomes the nurture drip. Insert the Wait and
+Send Email steps of §3 and §4 underneath them. Keep the notification on both branches — it stays
+useful once email is live.
 
 ---
 
-## 2. Add the branch in front of the notification
-
-Insert a **Wait** step, then an **If/Else**, ahead of the §1A notification:
+## 2. What the branch looks like after the upgrade
 
 ```
 Contact → Lead Status  is  equal to  HOT
