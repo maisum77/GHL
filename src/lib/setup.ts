@@ -33,6 +33,7 @@ export interface SetupInput {
   nurtureWorkflowId?: string;
   nurtureTrigger?: NurtureTriggerMode;
   calendarHostUserId?: string;
+  calendarHostConnected?: boolean;
 }
 
 export interface SetupResult {
@@ -160,7 +161,8 @@ function manifestFromResources(
   calendars: GhlNamedResource[],
   users: GhlNamedResource[],
   nurtureWorkflowId: string | undefined,
-  nurtureTrigger: NurtureTriggerMode
+  nurtureTrigger: NurtureTriggerMode,
+  calendarHostConnected: boolean
 ): ResourceManifest {
   return {
     customFields: Object.fromEntries(customFields.map((field) => [field.name, field.id])),
@@ -186,6 +188,7 @@ function manifestFromResources(
     calendarName: discoveryCalendarName,
     nurtureWorkflowId,
     nurtureTrigger,
+    calendarHostConnected,
     forms,
     workflows,
     calendars,
@@ -269,6 +272,9 @@ export async function connectAndProvision(input: SetupInput): Promise<SetupResul
   }
 
   const manualSteps: string[] = [];
+  // GHL does not report whether a calendar has an external account connected, so this is
+  // the operator confirmation rather than something the app can detect.
+  const calendarHostConnected = input.calendarHostConnected ?? existing?.manifest.calendarHostConnected ?? false;
   let pipeline = pipelines.find((candidate) => normalized(candidate.name) === normalized(pipelineName));
   if (!pipeline) {
     try {
@@ -327,7 +333,7 @@ export async function connectAndProvision(input: SetupInput): Promise<SetupResul
       }
     }
   }
-  if (discoveredCalendars.some((calendar) => normalized(calendar.name) === normalized(discoveryCalendarName))) {
+  if (discoveredCalendars.some((calendar) => normalized(calendar.name) === normalized(discoveryCalendarName)) && !calendarHostConnected) {
     manualSteps.push("Connect a Google or Outlook calendar to the host account so the discovery slots show real availability.");
   }
 
@@ -351,9 +357,10 @@ export async function connectAndProvision(input: SetupInput): Promise<SetupResul
 
   const formUrl = input.formUrl?.trim() || existing?.formUrl || "";
   const bookingUrl = input.bookingUrl?.trim() || existing?.bookingUrl || "";
-  if (!formUrl) {
-    manualSteps.push("Create or import the qualification form in GHL, then paste its public URL above.");
-  }
+  // Deliberately not a manual step: /apply falls back to this app's own form, which is what
+  // scores and routes the lead, so a GHL form URL is a reporting convenience rather than a
+  // requirement. Counting it here meant status could never reach "ready" without an optional
+  // field. The wizard still labels it optional.
   if (!bookingUrl) {
     manualSteps.push("Open the Discovery Call calendar in GHL and paste its public booking URL above.");
   }
@@ -377,7 +384,8 @@ export async function connectAndProvision(input: SetupInput): Promise<SetupResul
     discoveredCalendars,
     users,
     nurtureWorkflowId,
-    nurtureTrigger
+    nurtureTrigger,
+    calendarHostConnected
   );
   const now = new Date().toISOString();
   const record: SetupRecord = {

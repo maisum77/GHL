@@ -45,7 +45,7 @@ export default async function BookPage() {
                   <div className="success-icon"><CalendarBlank size={28} weight="fill" /></div>
                   <h2>Calendar connection pending.</h2>
                   <p>Once the GHL setup wizard has a booking URL, this page will show the live calendar here.</p>
-                  <Link className="button button-primary" href="/setup">Open client setup <ArrowUpRight size={17} /></Link>
+                  <Link className="button button-primary" href="/apply">Send a project brief instead <ArrowUpRight size={17} /></Link>
                 </div>
               </div>
             )}

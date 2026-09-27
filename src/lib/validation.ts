@@ -2,6 +2,7 @@ import { z } from "zod";
 import { leadBudgetValues, leadTimelineValues } from "./scoring";
 
 const optionalUrl = z.union([z.string().trim().url(), z.literal("")]);
+const yesNo = z.union([z.boolean(), z.enum(["true", "false", "yes", "no"])]);
 
 export const setupInputSchema = z.object({
   accessCode: z.string().trim().min(1, "Enter the setup access code"),
@@ -11,11 +12,13 @@ export const setupInputSchema = z.object({
   bookingUrl: optionalUrl.optional(),
   nurtureWorkflowId: z.string().trim().max(64).optional(),
   nurtureTrigger: z.enum(["enroll", "tag"]).optional(),
-  calendarHostUserId: z.string().trim().max(64).optional()
+  calendarHostUserId: z.string().trim().max(64).optional(),
+  calendarHostConnected: yesNo
+    .transform((value) => value === true || value === "true" || value === "yes")
+    .optional()
 });
 
 const existingWebsiteValue = z.union([z.boolean(), z.enum(["true", "false", "yes", "no"])]);
-
 export const leadInputSchema = z.object({
   name: z.string().trim().min(2, "Enter your name"),
   email: z.string().trim().email("Enter a valid email"),

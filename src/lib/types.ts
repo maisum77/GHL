@@ -101,6 +101,13 @@ export interface ResourceManifest {
   pipelineStageIds: Record<string, string>;
   calendarId?: string;
   calendarName?: string;
+  /**
+   * Operator confirmation that the host connected a Google or Outlook calendar. GHL's API
+   * does not report a calendar's external connection, so the app cannot derive this: the
+   * calendar exists and publishes default slots whether or not a host is attached. It is
+   * asserted at setup rather than detected.
+   */
+  calendarHostConnected?: boolean;
   nurtureWorkflowId?: string;
   nurtureTrigger?: NurtureTriggerMode;
   forms: GhlNamedResource[];

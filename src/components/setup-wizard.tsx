@@ -25,6 +25,7 @@ export function SetupWizard() {
         bookingUrl: String(form.get("bookingUrl") ?? ""),
         nurtureWorkflowId: String(form.get("nurtureWorkflowId") ?? ""),
         nurtureTrigger: String(form.get("nurtureTrigger") ?? "enroll"),
+        calendarHostConnected: String(form.get("calendarHostConnected") ?? "no"),
         calendarHostUserId: String(form.get("calendarHostUserId") ?? "")
       })
     });
@@ -87,6 +88,19 @@ export function SetupWizard() {
           <code> HOT</code> — it needs no If/Else. Pick <strong>Enrol every lead</strong> if the workflow has no
           trigger and branches internally. GHL fires a tag-triggered workflow itself, so this app must not also
           enrol the contact or it would run twice.
+        </small>
+      </div>
+      <div className="setup-field">
+        <label htmlFor="calendarHostConnected">Has the host connected a real calendar?</label>
+        <select id="calendarHostConnected" name="calendarHostConnected" defaultValue="no">
+          <option value="no">Not yet</option>
+          <option value="yes">Yes — Google or Outlook is connected</option>
+        </select>
+        <small>
+          GHL does not report whether a calendar has an external account connected, so this is
+          your confirmation rather than something this app can check. Until a host is connected
+          the calendar only publishes default slots, which can double-book you.
+          Settings &rarr; Calendars &rarr; Discovery Call &rarr; Edit &rarr; Connections.
         </small>
       </div>
       <div className="setup-field">

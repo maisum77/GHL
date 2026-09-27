@@ -183,8 +183,8 @@ export default async function HomePage() {
         <div className="container footer-inner">
           <span className="footer-meta">© {new Date().getFullYear()} The Moose Funnel System / 01</span>
           <div className="footer-links">
-            <Link href="/setup">Client setup</Link>
-            <Link href="/dashboard">Dashboard</Link>
+            <Link href="/apply">Start a project</Link>
+            <Link href="/book">Book a call</Link>
           </div>
         </div>
       </footer>

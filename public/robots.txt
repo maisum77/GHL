@@ -1,0 +1,7 @@
+# Private surfaces: the one-time setup wizard, the opportunity dashboard, and every
+# API route. None of these should be crawled or indexed. The app itself is
+# unauthenticated by design so search engines can read the marketing pages.
+User-agent: *
+Disallow: /setup
+Disallow: /dashboard
+Disallow: /api/

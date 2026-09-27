@@ -151,6 +151,70 @@ describe("connectAndProvision", () => {
     expect(steps).toContain("booking URL");
   });
 
+  it("does not treat the optional GHL form URL as outstanding work", async () => {
+    const { state } = stubGhlFetch();
+    state.workflows = [{ id: "workflow-1", name: "Lead Nurture" }];
+    state.calendars = [{ id: "calendar-1", name: "Discovery Call" }];
+
+    const result = await connectAndProvision({
+      token: testToken,
+      locationId: testLocationId,
+      // No formUrl on purpose: /apply falls back to this app's own form, which is what
+      // scores and routes the lead, so a GHL form is a reporting nicety, not a requirement.
+      bookingUrl: "https://calendar.example/discovery",
+      calendarHostConnected: true
+    });
+
+    expect(result.record.formUrl).toBe("");
+    expect(result.manualSteps.join(" | ")).not.toContain("qualification form");
+    expect(result.record.status).toBe("ready");
+  });
+
+  it("keeps the calendar-host step until the operator confirms the connection", async () => {
+    const { state } = stubGhlFetch();
+    state.workflows = [{ id: "workflow-1", name: "Lead Nurture" }];
+    state.calendars = [{ id: "calendar-1", name: "Discovery Call" }];
+
+    const unconfirmed = await connectAndProvision({
+      token: testToken,
+      locationId: testLocationId,
+      bookingUrl: "https://calendar.example/discovery"
+    });
+
+    // The calendar always exists, so this step can never be cleared by detection alone.
+    expect(unconfirmed.manualSteps.join(" | ")).toContain("Connect a Google or Outlook calendar");
+    expect(unconfirmed.record.status).toBe("awaiting_assets");
+    expect(unconfirmed.record.manifest.calendarHostConnected).toBe(false);
+
+    resetMemoryInstallation();
+
+    const confirmed = await connectAndProvision({
+      token: testToken,
+      locationId: testLocationId,
+      bookingUrl: "https://calendar.example/discovery",
+      calendarHostConnected: true
+    });
+
+    expect(confirmed.manualSteps.join(" | ")).not.toContain("Connect a Google or Outlook calendar");
+    expect(confirmed.record.manifest.calendarHostConnected).toBe(true);
+    expect(confirmed.record.status).toBe("ready");
+  });
+
+  it("still blocks on a missing booking URL, which visitors need", async () => {
+    const { state } = stubGhlFetch();
+    state.workflows = [{ id: "workflow-1", name: "Lead Nurture" }];
+    state.calendars = [{ id: "calendar-1", name: "Discovery Call" }];
+
+    const result = await connectAndProvision({
+      token: testToken,
+      locationId: testLocationId,
+      formUrl: "https://forms.example/qualification"
+    });
+
+    expect(result.manualSteps.join(" | ")).toContain("booking URL");
+    expect(result.record.status).toBe("awaiting_assets");
+  });
+
   it("requires both a token and a location ID", async () => {
     stubGhlFetch();
 

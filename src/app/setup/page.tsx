@@ -1,5 +1,16 @@
+import type { Metadata } from "next";
 import { SiteHeader } from "@/components/site-header";
 import { SetupWizard } from "@/components/setup-wizard";
+
+/**
+ * The wizard is a one-time operator surface. The POST is protected by the setup access code
+ * and throttled, but the page itself is publicly reachable and was being indexed, so it is
+ * excluded here and in public/robots.txt.
+ */
+export const metadata: Metadata = {
+  title: "Client setup — The Moose Funnel System",
+  robots: { index: false, follow: false }
+};
 
 export default function SetupPage() {
   return (
