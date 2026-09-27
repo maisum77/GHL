@@ -28,9 +28,102 @@ no lead is re-enrolled.
 
 Skip to §1A for Variant A. §3–§5 are the Variant B add-on.
 
+### Two ways to start the workflow
+
+Pick one. They are mutually exclusive — setting both means every HOT lead is notified twice.
+
+| | §1A — enrol every lead | §1B — contact tag trigger |
+|---|---|---|
+| Workflow trigger | An inert one, never fired | `Contact Tag` = `HOT` |
+| Conditions needed | Yes — an If/Else on `Lead Status` | **No** |
+| Setup wizard | "Enrol every lead" | "Contact tag triggers it" |
+| Who starts it | This app, via the enrollment API | GHL, from the tag |
+| Reaches | All three classifications | HOT only |
+| Build difficulty | 6 steps, and the If/Else is buried mid-canvas | 2 steps, both found on the create screen |
+
+**Take §1B if you can.** It is the shortest build and the most robust: the app already applies a
+`hot` tag, so GHL does the work. §1A exists for the case where you want the workflow to see every
+lead and branch internally.
+
 ---
 
-## 1A. Variant A — notifications and tags (no domain required)
+## 1B. Variant A via a Contact Tag trigger (recommended)
+
+The whole workflow is a trigger and two actions. No conditions, no branches, no Wait.
+
+`Workflows → New Workflow → Create Workflow → Start from scratch`
+
+| Setting | Value |
+|---|---|
+| Name | `Lead Nurture` — exact, or the app won't find it |
+| Allow re-enrolment | **off** (one pass per contact) |
+
+### Step 1 — Trigger
+
+```
+Contact Tag  →  is  →  hot
+```
+
+GHL stores tag names lowercased, so the trigger value is `hot` even though the app applies `HOT`.
+GHL's own UI shows the lowercase name it holds.
+
+The app applies this tag to every hot lead during routing, so GHL fires the workflow on its own.
+That is why the setup wizard must then be set to **"Contact tag triggers it"** — otherwise the app
+would also enrol the contact and the workflow would run twice per lead.
+
+### Step 2 — Internal Notification
+
+- **Recipient:** yourself (the workflow's owner)
+- **Title:** `HOT lead — {{contact.name}}`
+- **Message:**
+
+  > `{{contact.name}}` just applied.
+  >
+  > Budget: `{{contact.Budget}}` · Timeline: `{{contact.Timeline}}` · Score: `{{contact.Lead Score}}`
+  >
+  > An opportunity is already open in Agency Funnel at **Qualified**. Call them.
+
+- Leave send timing as immediate.
+
+Use the dynamic-value picker to insert `Budget`, `Timeline` and `Lead Score` rather than typing
+the braces — a tag that is plain text instead of a field reference renders blank with no error.
+
+### Step 3 — Add Tag
+
+`Qualified`, which already exists. This is the exit hook: `Qualified` is a stop condition, so a
+lead who is already qualified is never re-engaged.
+
+### Step 4 — Stop conditions
+
+- Contact has an opportunity in stage `Call Booked` → stop
+- Contact has tag `Qualified` → stop
+- Contact is marked Do Not Contact → stop
+
+### Step 5 — Publish
+
+- [ ] Workflow named exactly `Lead Nurture`
+- [ ] Trigger is `Contact Tag` = `hot`
+- [ ] Internal Notification uses real field references, not typed braces
+- [ ] `Add Tag: Qualified`
+- [ ] All three stop conditions set
+- [ ] **Published**, not draft — the app only enrols into published workflows
+- [ ] Workflow ID copied
+
+Then in `/setup`, set **"How does the workflow start?"** to **Contact tag triggers it**, paste the
+workflow ID, and submit.
+
+### Test it
+
+Publish, then use the workflow's **Test workflow** option against `funnel-test-hot@example.com`
+(score 70, `Lead Status = HOT`, tagged `hot`). Your notification bell should show the name,
+`$5,000+`, `Immediately`, and `70`. If any value is blank, the merge tags are wrong.
+
+The final proof is a live submission through `/apply` — that exercises the real path, tag applied
+during routing, GHL firing the workflow from it.
+
+---
+
+## 1A. Variant A via app enrolment (when you want every lead in the workflow)
 
 **Workflows → New Workflow → Start from scratch**
 
@@ -38,9 +131,18 @@ Skip to §1A for Variant A. §3–§5 are the Variant B add-on.
 |---|---|
 | Name | `Lead Nurture` |
 | Enrolment | Allow re-enrolment: **off** (one pass per contact) |
+| Trigger | `Contact Tag` = `Nurture Sequence` — **inert**, see below |
 
 The exact name matters — the app finds this workflow by name. If you name it something else,
 paste its ID into the setup wizard instead.
+
+**The trigger must be inert.** The app starts this workflow by calling GHL's enrollment endpoint,
+which ignores the trigger entirely — so any trigger that can fire on its own would run the
+workflow a second time. `Nurture Sequence` is a tag the app never applies, so this trigger sits
+dormant forever. Do **not** use `Contact Created` or `Appointment Booked`; those fire in normal
+use and would notify you about leads the app never scored.
+
+Then in `/setup`, set **"How does the workflow start?"** to **Enrol every lead**.
 
 ### Step 1 — If/Else on `Lead Status`
 
@@ -115,17 +217,25 @@ noise.
 
 ## Variant B — the email sequence
 
-Everything below is the upgrade you apply once you have a verified sending domain. Add it to
-the workflow from §1A; do not rebuild it.
+Everything below is the upgrade you apply once you have a verified sending domain. Add it to the
+workflow you already published; do not rebuild it.
 
-Extend the existing **If/Else** from §1A Step 1. The `Lead Status = HOT` branch you already have
-becomes the HOT email path; the **No** branch becomes the nurture drip. Insert the Wait and
-Send Email steps of §3 and §4 underneath them. Keep the notification on both branches — it stays
-useful once email is live.
+**If you built §1B (tag trigger):** the `hot` tag already limits entry to hot leads, so the HOT
+email path in §3 slots straight in under the notification. To add the nurture drip for WARM and
+NURTURE leads you must also change the trigger to a real one (for example `Contact Created` or a
+`Form Submitted` trigger), set the setup wizard back to **"Enrol every lead"**, and add the §2
+branch. Do that in one sitting — a live workflow with a tag trigger cannot reach non-hot leads.
+
+**If you built §1A (app enrolment):** the **If/Else** from §1A Step 1 already splits hot from
+everything else. Extend each branch with the Wait and Send Email steps below. Nothing else moves.
+
+Keep the notification on both branches either way — it stays useful once email is live.
 
 ---
 
-## 2. What the branch looks like after the upgrade
+## 2. The hot/nurture split
+
+Only needed if the workflow does not already have it:
 
 ```
 Contact → Lead Status  is  equal to  HOT
@@ -134,8 +244,8 @@ Contact → Lead Status  is  equal to  HOT
 - **Yes → Booking CTA branch** (§3). Hot leads have already cleared the bar; do not drip them.
 - **No → Nurture sequence** (§4).
 
-Both branches keep the §1A notification. The app writes `Lead Status` on every submission, so
-this condition is what keeps hot leads from being nurtured.
+The app writes `Lead Status` on every submission, so this condition is what keeps hot leads
+from being nurtured.
 
 ---
 
@@ -308,10 +418,21 @@ GHL silently discards picklist values that are not real options, so a lead can s
 
 ### 6.2 Variant A only
 
-- [ ] Internal Notification is the first step, with no wait before it
-- [ ] `Add Tag: Qualified` follows the notification
+Via §1B (tag trigger):
 
-Done. A HOT lead will notify you the second it lands. Skip the rest.
+- [ ] Trigger is `Contact Tag` = `hot`
+- [ ] Setup wizard is set to "Contact tag triggers it"
+- [ ] Internal Notification is the only communication action
+- [ ] `Add Tag: Qualified` present
+
+Via §1A (app enrolment):
+
+- [ ] Trigger is the inert `Nurture Sequence` tag, not a real event
+- [ ] Setup wizard is set to "Enrol every lead"
+- [ ] The If/Else on `Lead Status = HOT` is the first step, with no wait before it
+- [ ] `Add Tag: Qualified` follows the notification on the Yes branch
+
+Done either way. A HOT lead will notify you the second it lands. Skip the rest.
 
 ### 6.3 Variant B only
 

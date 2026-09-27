@@ -187,7 +187,13 @@ async function routeLead(
   }
 
   let enrolled = false;
-  if (manifest.nurtureWorkflowId) {
+  if (!manifest.nurtureWorkflowId) {
+    // Nothing to do. The workflow is either not built yet or not recorded.
+  } else if (manifest.nurtureTrigger === "tag") {
+    // The workflow fires from a Contact Tag trigger, which GHL handles when the routing
+    // tag is applied above. Enrolling as well would enter the workflow a second time and
+    // double every notification, so the tag is the only entry point.
+  } else {
     try {
       await client.enrollContactInWorkflow(contactId, manifest.nurtureWorkflowId, new Date().toISOString());
       enrolled = true;

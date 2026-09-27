@@ -135,6 +135,54 @@ describe("lead routing", () => {
     expect(body.warnings.join(" ")).toContain("nurture enrollment failed");
   });
 
+  it("does not enroll when the workflow is tag-triggered, so it cannot fire twice", async () => {
+    const tagTriggered = makeInstallation({
+      manifest: makeManifest({ nurtureWorkflowId: "workflow-1", nurtureTrigger: "tag" })
+    });
+    vi.mocked((await import("@/lib/db")).getInstallation).mockResolvedValue(tagTriggered);
+    const { state } = stubGhlFetch();
+
+    const response = await post(hotLead);
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    // GHL fires the workflow itself from the HOT tag applied above. Enrolling as well
+    // would enter the workflow a second time and double every notification.
+    expect(state.enrolled).toHaveLength(0);
+    expect(body.enrolledInNurture).toBe(false);
+    // The rest of the routing is unaffected.
+    expect(body.tagged).toBe(true);
+    expect(body.opportunityCreated).toBe(true);
+    expect(state.taggedContacts[0].tags).toEqual(["HOT"]);
+  });
+
+  it("still tags in tag-trigger mode, since the tag is the only entry point", async () => {
+    const tagTriggered = makeInstallation({
+      manifest: makeManifest({ nurtureWorkflowId: "workflow-1", nurtureTrigger: "tag" })
+    });
+    vi.mocked((await import("@/lib/db")).getInstallation).mockResolvedValue(tagTriggered);
+    stubGhlFetch();
+
+    const body = await (await post(hotLead)).json();
+
+    // A failed tag would silently mean the workflow never runs.
+    expect(body.tagged).toBe(true);
+    expect(body.warnings).toEqual([]);
+  });
+
+  it("enrolls by default when no trigger mode has been chosen", async () => {
+    const legacy = makeInstallation({
+      manifest: makeManifest({ nurtureWorkflowId: "workflow-1", nurtureTrigger: undefined })
+    });
+    vi.mocked((await import("@/lib/db")).getInstallation).mockResolvedValue(legacy);
+    const { state } = stubGhlFetch();
+
+    const body = await (await post(hotLead)).json();
+
+    expect(state.enrolled).toHaveLength(1);
+    expect(body.enrolledInNurture).toBe(true);
+  });
+
   it("warns instead of throwing when no pipeline is connected", async () => {
     const noPipeline = makeInstallation({ manifest: makeManifest({ pipelineId: undefined }) });
     vi.mocked((await import("@/lib/db")).getInstallation).mockResolvedValue(noPipeline);

@@ -10,6 +10,7 @@ export const setupInputSchema = z.object({
   formUrl: optionalUrl.optional(),
   bookingUrl: optionalUrl.optional(),
   nurtureWorkflowId: z.string().trim().max(64).optional(),
+  nurtureTrigger: z.enum(["enroll", "tag"]).optional(),
   calendarHostUserId: z.string().trim().max(64).optional()
 });
 

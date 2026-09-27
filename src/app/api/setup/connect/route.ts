@@ -37,6 +37,7 @@ export async function POST(request: NextRequest) {
       formUrl: result.record.formUrl,
       bookingUrl: result.record.bookingUrl,
       nurtureWorkflowId: result.record.manifest.nurtureWorkflowId,
+      nurtureTrigger: result.record.manifest.nurtureTrigger,
       calendarId: result.record.manifest.calendarId
     });
     response.cookies.set(setupSessionCookie, createSessionValue(), sessionCookieOptions);

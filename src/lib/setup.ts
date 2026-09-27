@@ -11,6 +11,7 @@ import type {
   GhlNamedResource,
   GhlPipeline,
   GhlTag,
+  NurtureTriggerMode,
   PublicSetupConfig,
   ResourceManifest,
   SetupRecord
@@ -30,6 +31,7 @@ export interface SetupInput {
   formUrl?: string;
   bookingUrl?: string;
   nurtureWorkflowId?: string;
+  nurtureTrigger?: NurtureTriggerMode;
   calendarHostUserId?: string;
 }
 
@@ -157,7 +159,8 @@ function manifestFromResources(
   workflows: GhlNamedResource[],
   calendars: GhlNamedResource[],
   users: GhlNamedResource[],
-  nurtureWorkflowId: string | undefined
+  nurtureWorkflowId: string | undefined,
+  nurtureTrigger: NurtureTriggerMode
 ): ResourceManifest {
   return {
     customFields: Object.fromEntries(customFields.map((field) => [field.name, field.id])),
@@ -182,6 +185,7 @@ function manifestFromResources(
     calendarId: calendars.find((calendar) => normalized(calendar.name) === normalized(discoveryCalendarName))?.id,
     calendarName: discoveryCalendarName,
     nurtureWorkflowId,
+    nurtureTrigger,
     forms,
     workflows,
     calendars,
@@ -334,8 +338,13 @@ export async function connectAndProvision(input: SetupInput): Promise<SetupResul
       : undefined) ??
     workflows.find((workflow) => normalized(workflow.name) === normalized(nurtureWorkflowName));
   const nurtureWorkflowId = nurtureWorkflow?.id ?? requestedNurtureWorkflowId;
+  const nurtureTrigger: NurtureTriggerMode = input.nurtureTrigger ?? existing?.manifest.nurtureTrigger ?? "enroll";
   if (!nurtureWorkflowId) {
-    manualSteps.push(`Build the "${nurtureWorkflowName}" workflow from NURTURE_WORKFLOW.md, publish it, then paste its ID above.`);
+    manualSteps.push(
+      nurtureTrigger === "tag"
+        ? `Build the "${nurtureWorkflowName}" workflow from NURTURE_WORKFLOW.md with a Contact Tag trigger on "${tagNames[0]}", publish it, then paste its ID above.`
+        : `Build the "${nurtureWorkflowName}" workflow from NURTURE_WORKFLOW.md, publish it, then paste its ID above.`
+    );
   } else if (!nurtureWorkflow) {
     warnings.push(`Nurture workflow ${nurtureWorkflowId} was not found among the location workflows. Leads will not be auto-enrolled.`);
   }
@@ -367,7 +376,8 @@ export async function connectAndProvision(input: SetupInput): Promise<SetupResul
     workflows,
     discoveredCalendars,
     users,
-    nurtureWorkflowId
+    nurtureWorkflowId,
+    nurtureTrigger
   );
   const now = new Date().toISOString();
   const record: SetupRecord = {

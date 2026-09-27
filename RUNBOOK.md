@@ -226,15 +226,21 @@ Proposal Sent · Negotiation · Won · Lost
 
 ### 5.2 The `Lead Nurture` workflow
 
-Open **`NURTURE_WORKFLOW.md`** and follow it. It has two variants — build **Variant A** now:
+Open **`NURTURE_WORKFLOW.md`** and follow it. Build **Variant A** — §1B is the shortest route:
 
 - [ ] Create a workflow named exactly `Lead Nurture`
-- [ ] First step is an **Internal Notification** to yourself, with no wait before it
-- [ ] Notification body uses `{{contact.Budget}}`, `{{contact.Timeline}}`, `{{contact.Lead Score}}`
-- [ ] `Add Tag: Qualified` follows it
-- [ ] Exit conditions set — stop on `Call Booked`, on the `Qualified` tag, and on Do Not Contact
+- [ ] Trigger: `Contact Tag` = `hot` (the app already applies that tag to hot leads)
+- [ ] **Internal Notification** to yourself, immediate, no wait before it
+- [ ] Notification body uses dynamic values for `Budget`, `Timeline`, `Lead Score`
+- [ ] `Add Tag: Qualified`
+- [ ] Stop conditions set — stop on `Call Booked`, on the `Qualified` tag, and on Do Not Contact
 - [ ] **Publish** the workflow (the app only enrols into published workflows)
 - [ ] Copy the workflow ID (GHL → Settings → Workflows, or the workflow's URL)
+- [ ] In `/setup`, set "How does the workflow start?" to **Contact tag triggers it**
+
+If you would rather the workflow see every lead and branch internally, follow §1A instead and
+leave the wizard on **Enrol every lead**. The two are mutually exclusive: pick both and every hot
+lead is notified twice.
 
 > **No sending domain yet?** That is fine, and Variant A is built for it. An Internal
 > Notification goes to your own GHL inbox and needs no verified sender, so a HOT lead still
@@ -242,8 +248,11 @@ Open **`NURTURE_WORKFLOW.md`** and follow it. It has two variants — build **Va
 > upgrade once you have a domain — you insert steps into this same workflow, you do not rebuild
 > it. See "Choose a variant first" in the guide.
 
-> All three classifications get enrolled — the app enrols everyone, including HOT leads. The
-> notification is unconditional; Variant B's If/Else is what later stops hot leads being dripped.
+> **Tag-trigger caveat.** A workflow started by a `Contact Tag` trigger can only ever reach
+> contacts carrying that tag, so it will never see WARM or NURTURE leads. That is fine for
+> Variant A, which does nothing for them. Before adding the nurture drip in Variant B, switch the
+> trigger to a real event, set the wizard back to **Enrol every lead**, and add the §2 branch —
+> all in one sitting, or non-hot leads will silently receive nothing.
 
 ---
 
@@ -282,6 +291,7 @@ If you did add the nurture emails, they silently fail if the sender is not verif
 Return to `/setup` and submit again with the same token, now filling in:
 
 - [ ] **Nurture workflow ID** — from Phase 5
+- [ ] **How does the workflow start?** — "Contact tag triggers it" for §1B, "Enrol every lead" for §1A
 - [ ] **Booking URL** — from Phase 6
 - [ ] **Calendar host user ID** — optional; skip unless the default host is wrong
 - [ ] **Form URL** — optional. `/apply` uses the app's own form, which is what scores and routes

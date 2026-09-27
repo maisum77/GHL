@@ -85,6 +85,14 @@ export interface FieldReport {
   detail?: string;
 }
 
+/**
+ * How the nurture workflow starts. `enroll` is the app calling GHL's enrollment endpoint on
+ * every lead, which requires the workflow to contain its own If/Else. `tag` means the workflow
+ * fires from a Contact Tag trigger instead, so the app must not enroll or every lead would
+ * enter the workflow twice.
+ */
+export type NurtureTriggerMode = "enroll" | "tag";
+
 export interface ResourceManifest {
   customFields: Record<string, string>;
   customFieldOptions: Record<string, string[]>;
@@ -94,6 +102,7 @@ export interface ResourceManifest {
   calendarId?: string;
   calendarName?: string;
   nurtureWorkflowId?: string;
+  nurtureTrigger?: NurtureTriggerMode;
   forms: GhlNamedResource[];
   workflows: GhlNamedResource[];
   calendars: GhlNamedResource[];

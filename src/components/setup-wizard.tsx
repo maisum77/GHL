@@ -24,6 +24,7 @@ export function SetupWizard() {
         formUrl: String(form.get("formUrl") ?? ""),
         bookingUrl: String(form.get("bookingUrl") ?? ""),
         nurtureWorkflowId: String(form.get("nurtureWorkflowId") ?? ""),
+        nurtureTrigger: String(form.get("nurtureTrigger") ?? "enroll"),
         calendarHostUserId: String(form.get("calendarHostUserId") ?? "")
       })
     });
@@ -73,7 +74,20 @@ export function SetupWizard() {
       <div className="setup-field">
         <label htmlFor="nurtureWorkflowId">Nurture workflow ID <span className="form-help">(optional now)</span></label>
         <input id="nurtureWorkflowId" name="nurtureWorkflowId" placeholder="e.g. f5a2ab74-4c1c-4ede-9c43-2ef1e01e0b38" />
-        <small>Build the sequence from NURTURE_WORKFLOW.md, publish it, then paste its ID. Every new lead is enrolled automatically.</small>
+        <small>Build the sequence from NURTURE_WORKFLOW.md, publish it, then paste its ID.</small>
+      </div>
+      <div className="setup-field">
+        <label htmlFor="nurtureTrigger">How does the workflow start?</label>
+        <select id="nurtureTrigger" name="nurtureTrigger" defaultValue="enroll">
+          <option value="enroll">Enrol every lead (workflow branches on Lead Status)</option>
+          <option value="tag">Contact tag triggers it (simplest to build)</option>
+        </select>
+        <small>
+          Pick <strong>Contact tag</strong> if your workflow starts with a <code>Contact Tag</code> trigger on
+          <code> HOT</code> — it needs no If/Else. Pick <strong>Enrol every lead</strong> if the workflow has no
+          trigger and branches internally. GHL fires a tag-triggered workflow itself, so this app must not also
+          enrol the contact or it would run twice.
+        </small>
       </div>
       <div className="setup-field">
         <label htmlFor="calendarHostUserId">Calendar host user ID <span className="form-help">(optional)</span></label>
