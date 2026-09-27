@@ -321,6 +321,13 @@ export async function connectAndProvision(input: SetupInput): Promise<SetupResul
         allowCancellation: true,
         autoConfirm: true,
         isActive: true,
+        // Without these GHL publishes slots from its own default template instead of the
+        // host's real availability, so the calendar would offer times nobody agreed to.
+        // Mon-Fri, 09:00-17:00 in the location's own timezone.
+        openHours: [1, 2, 3, 4, 5].map((day) => ({
+          daysOfTheWeek: [day],
+          hours: [{ openHour: 9, openMinute: 0, closeHour: 17, closeMinute: 0 }]
+        })),
         teamMembers: [{ userId: hostUserId, priority: 0.5, isPrimary: true }]
       };
       try {

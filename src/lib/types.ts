@@ -65,6 +65,15 @@ export interface GhlCalendarConfig {
   allowCancellation?: boolean;
   autoConfirm?: boolean;
   isActive?: boolean;
+  /**
+   * Working hours. GHL's shape is one entry per day group, with numeric hour and minute
+   * parts — `openHour: "09:00"` is rejected, and a calendar created without these publishes
+   * slots from GHL's own default template rather than the host's actual availability.
+   */
+  openHours?: Array<{
+    daysOfTheWeek: number[];
+    hours: Array<{ openHour: number; openMinute: number; closeHour: number; closeMinute: number }>;
+  }>;
   teamMembers?: Array<{
     userId: string;
     priority?: number;

@@ -69,6 +69,25 @@ describe("connectAndProvision", () => {
     expect(state.calls.some((call) => call.method === "POST" && call.url.endsWith("/calendars/"))).toBe(true);
   });
 
+  it("creates the discovery calendar with explicit working hours", async () => {
+    const { state } = stubGhlFetch();
+
+    await connectAndProvision({ token: testToken, locationId: testLocationId });
+
+    const created = state.calendars.find((calendar) => calendar.name === "Discovery Call");
+    // GHL rejects openHour: "09:00" — the hour and minute must be separate numbers, and
+    // openHours is one entry per day rather than a single entry listing every weekday.
+    expect(created?.openHours).toEqual(
+      [1, 2, 3, 4, 5].map((day) => ({
+        daysOfTheWeek: [day],
+        hours: [{ openHour: 9, openMinute: 0, closeHour: 17, closeMinute: 0 }]
+      }))
+    );
+    // A calendar created without hours publishes slots from GHL's own default template,
+    // which is not the host's real availability.
+    expect((created?.openHours as unknown[]).length).toBeGreaterThan(0);
+  });
+
   it("does not create a second calendar on re-run", async () => {
     const { state } = stubGhlFetch();
     state.calendars = [{ id: "calendar-existing", name: "Discovery Call" }];
