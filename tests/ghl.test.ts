@@ -91,7 +91,7 @@ describe("GhlClient writes", () => {
     });
   });
 
-  it("enrolls a contact in a workflow", async () => {
+  it("enrolls a contact in a workflow, trimming the fractional seconds GHL rejects", async () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ success: true })));
     vi.stubGlobal("fetch", fetchMock);
     const client = new GhlClient("private-token", "location-1");
@@ -101,7 +101,21 @@ describe("GhlClient writes", () => {
     expect(fetchMock.mock.calls[0][0]).toBe(
       "https://services.leadconnectorhq.com/contacts/contact-1/workflow/workflow-1"
     );
-    expect(JSON.parse(String(fetchMock.mock.calls[0][1]?.body))).toEqual({ eventStartTime: "2026-01-01T00:00:00.000Z" });
+    // GHL answers 422 "must be a date and time with timezone offset" for a timestamp with
+    // milliseconds. Verified against the live API: `.sss` fails, no fraction succeeds.
+    expect(JSON.parse(String(fetchMock.mock.calls[0][1]?.body))).toEqual({ eventStartTime: "2026-01-01T00:00:00Z" });
+  });
+
+  it("leaves an explicit offset intact when trimming the fraction", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ success: true })));
+    vi.stubGlobal("fetch", fetchMock);
+    const client = new GhlClient("private-token", "location-1");
+
+    await client.enrollContactInWorkflow("contact-1", "workflow-1", "2026-01-01T00:00:00.250+05:00");
+
+    expect(JSON.parse(String(fetchMock.mock.calls[0][1]?.body))).toEqual({
+      eventStartTime: "2026-01-01T00:00:00+05:00"
+    });
   });
 
   it("posts option-bearing fields to the location route as a plain string array", async () => {

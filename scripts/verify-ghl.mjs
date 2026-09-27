@@ -258,7 +258,8 @@ async function main() {
         status: "open"
       }
     });
-    opportunityId = opportunity?.id;
+    // The create response nests the record: { opportunity: { id, ... } }.
+    opportunityId = opportunity?.opportunity?.id ?? opportunity?.id;
     if (opportunityId) {
       pass(`opportunity created: ${opportunityId}`);
     } else {
@@ -270,9 +271,17 @@ async function main() {
   if (dryRun || !contactId) {
     skip("this is the check that catches silently discarded custom field values");
   } else {
-    const contact = await api(`/contacts/${encodeURIComponent(contactId)}`);
+    // The GET wraps the record: { contact: {...}, traceId }. Reading customFields off the
+    // envelope yields undefined and an empty map, so every field reads as "did not persist".
+    const payload = await api(`/contacts/${encodeURIComponent(contactId)}`);
+    const contact = payload?.contact ?? payload;
+    // Each entry is { id, value } with no name, so names come from the location's field list.
+    const namesById = new Map(customFields.map((field) => [field.id, String(field.name || "").trim().toLowerCase()]));
     const values = new Map(
-      (contact?.customFields || []).map((entry) => [String(entry.name || "").trim().toLowerCase(), entry.value])
+      (contact?.customFields || []).map((entry) => [
+        namesById.get(entry.id) ?? String(entry.name || "").trim().toLowerCase(),
+        Array.isArray(entry.value) ? entry.value.join(", ") : entry.value
+      ])
     );
     for (const [name, expected] of [
       ["Service", "CRM / Funnel"],
@@ -300,7 +309,7 @@ async function main() {
   } else {
     await api(`/contacts/${encodeURIComponent(contactId)}/workflow/${encodeURIComponent(nurture.id)}`, {
       method: "POST",
-      body: { eventStartTime: new Date().toISOString() }
+      body: { eventStartTime: new Date().toISOString().replace(/\.\d+/, "") }
     });
     pass(`enrolled in "${nurture.name}"`);
   }

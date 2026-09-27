@@ -71,6 +71,16 @@ function normalizedLabel(value: string): string {
   return value.trim().toLocaleLowerCase();
 }
 
+/**
+ * GHL's workflow enrollment rejects an ISO timestamp that carries fractional seconds, and
+ * reports it as "must be a date and time with timezone offset" — which sends you looking at
+ * the offset when the milliseconds are the actual problem. Trimming `.sss` is what makes the
+ * call succeed; both the `Z` and `+00:00` forms are accepted once the fraction is gone.
+ */
+function ghlTimestamp(value: string): string {
+  return value.replace(/\.\d+/, "");
+}
+
 export class GhlClient {
   private readonly baseUrl: string;
   private readonly token: string;
@@ -298,7 +308,7 @@ export class GhlClient {
       `/contacts/${encodeURIComponent(contactId)}/workflow/${encodeURIComponent(workflowId)}`,
       {
         method: "POST",
-        body: JSON.stringify(eventStartTime ? { eventStartTime } : {})
+        body: JSON.stringify(eventStartTime ? { eventStartTime: ghlTimestamp(eventStartTime) } : {})
       }
     );
   }
