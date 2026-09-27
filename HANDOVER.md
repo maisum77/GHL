@@ -1,10 +1,35 @@
 # Client Handover Runbook
 
-Everything the funnel does automatically, and the four things that must be done by hand.
+Everything the funnel does automatically, and the things that must be done by hand.
 
-> **Setting this up for the first time?** Use **[`RUNBOOK.md`](RUNBOOK.md)** instead — it is the
+> **Setting this up for the first time?** Use **[`RUNBOOK.md`](RUNBOOK.md)** instead — the
 > linear, phase-by-phase checklist with every value spelled out. This document is the reference you
 > come back to once it is live.
+
+---
+
+## 0. Current state
+
+| | |
+|---|---|
+| Site | `https://moose-funnel-system.vercel.app` — deployed from `main`, auto-deploys on push |
+| Location | `rafters` |
+| Setup status | **ready** — 0 warnings, 0 manual steps |
+| Verified | `npm run verify:ghl` reports **All checks passed** (12 steps) |
+| Calendar | `Discovery Call`, Mon–Fri 09:00–17:00 Asia/Karachi, Google Meet links, 224 slots / 14 weekdays |
+| Pipeline | `Agency Funnel`, 8 stages, currently empty |
+
+**Two things are still outstanding:**
+
+1. **The booking→pipeline workflow (§6.3).** Until it is built, a booked call leaves its
+   opportunity at `Qualified` and the `Call Booked` stage never fills.
+2. **`Settings → Duplicates` → allow on email only.** With the default, GHL's upsert merges on
+   *any* identifier, so two leads sharing a phone number collapse into one contact and the second
+   overwrites the first — silently, with no duplicate created. Verified against the live API.
+
+A verified sending domain is **not** required for the funnel to work. The app never sends email;
+it only enrols contacts, and the workflow's Internal Notification reaches your GHL inbox without
+one. The domain is needed only for the six-touch nurture drip in `NURTURE_WORKFLOW.md` §4.
 
 ---
 
@@ -17,8 +42,8 @@ Everything the funnel does automatically, and the four things that must be done 
 | 4 routing tags (HOT / WARM / NURTURE / Qualified) | The app — on setup |
 | `Discovery Call` calendar, 30-minute slots | The app — on setup |
 | Contact creation, scoring, tagging, opportunity, nurture enrolment | The app — on every lead |
-| **`Agency Funnel` pipeline, 8 stages** | **You** — GHL's API refuses pipeline writes |
-| **Calendar host connection** | **You** |
+| `Agency Funnel` pipeline, 8 stages | **You** — GHL's API refuses pipeline writes *(done)* |
+| ~~Calendar host connection~~ **You** — *done: Google Calendar, Mon–Fri 09:00–17:00 PKT* |
 | **`Lead Nurture` workflow** | **You** — from `NURTURE_WORKFLOW.md` |
 | **Verified email sender** | **You** — *deferrable; needed only for the nurture emails* |
 | **Form and booking URLs** | **You** — copied from GHL |
@@ -152,6 +177,29 @@ Follow **[NURTURE_WORKFLOW.md](NURTURE_WORKFLOW.md)**. Roughly 15 minutes: one H
 six-touch nurture sequence. The app enrols every lead into it automatically, so there is nothing to
 wire up afterwards beyond pasting the workflow ID into the setup wizard.
 
+### 6.3 Move the opportunity when a call is booked
+
+**Required. Five minutes. Without it the pipeline never shows a booked call.**
+
+The app creates one opportunity per form submission, opening at `Qualified` for hot leads and
+`New Lead` for everything else. Nothing then moves it when the lead books, so every booked
+discovery call is left sitting at `Qualified` and the `Call Booked` stage stays empty. The
+dashboard and any stage-based forecasting will both under-report.
+
+```
+Trigger   Appointment Status  →  booked
+          Calendar             →  Discovery Call
+Action    Move Opportunity
+          Pipeline             →  Agency Funnel
+          Stage                →  Call Booked
+```
+
+Publish it. It needs no email domain and no scopes beyond the ones already granted.
+
+Note that a visitor who books from `/book` **without** submitting the form gets no opportunity
+at all — the two paths are independent. That is deliberate, so junk bookings do not clutter the
+pipeline, but it means pipeline coverage equals form submissions, not bookings.
+
 ---
 
 ## 7. Connect the calendar host
@@ -163,18 +211,31 @@ In GHL: **Settings → Calendars → Discovery Call → Edit → Connections**, 
 Outlook for the chosen host. Confirm slots appear on the public booking page. Set working hours,
 booking window, and buffers to taste.
 
+**Meeting location.** Set it in the same editor, or booked calls go out with no way to join. GHL
+only accepts three values for this field, and the names are not guessable — `zoom`, `google Meet`
+and `phone` are all rejected as invalid enum values:
+
+| Setting in the GHL UI | Value the API stores |
+|---|---|
+| Custom | `custom` |
+| Google Meet | `google_conference` |
+| In person / physical | `physical` |
+
 ---
 
 ## 8. Copy the two URLs
 
-Both are needed for the public pages to show live GHL content:
+- **Form URL** — optional. `/apply` uses the app's own form, which is what scores and routes the
+  lead. Use a GHL form only if you want the submission to appear in the GHL forms UI directly.
+- **Booking URL** — required. Open the `Discovery Call` calendar and copy its public booking URL.
 
-- **Form URL** — Settings → Forms. Either import the qualification form, or skip this: `/apply` uses
-  the app's own form, which is what scores and routes the lead. Use a GHL form only if you want the
-  submission to appear in the GHL UI directly.
-- **Booking URL** — open the `Discovery Call` calendar and copy its public booking URL.
+The booking URL looks like `https://msgsndr.com/widget/bookings/<slug>`. Note the path is
+`/widget/bookings/`, **not** `/calendar/` — guessing the slug under the wrong path returns 404
+and looks like the calendar is missing. GHL's API exposes no booking slug at all, so this value
+exists only in the calendar editor.
 
-Paste both into `/setup` and submit again.
+Paste the booking URL into `/setup` and submit. `status` should read **ready** with zero manual
+steps.
 
 ---
 
