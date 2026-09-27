@@ -258,6 +258,23 @@ lead is notified twice.
 
 ## Phase 6 — Connect the calendar host
 
+> **Before anything else, fix the duplicate setting.** GHL → **Settings → Duplicates** → set
+> duplicate contacts to **allow on email only**.
+>
+> With the default (`allowDuplicateContact: false`) GHL's upsert endpoint merges on **any**
+> identifier it is given, not just email. Two different people who share a phone number — a
+> company main line, a typo, a shared handset — collapse into one contact and the second
+> person's email **overwrites** the first. The contact is not duplicated, so nothing warns you.
+> Verified against the live API: same phone + different email returns the *first* contact's ID
+> and replaces its email.
+>
+> A lead funnel sees shared numbers constantly, so this is a required step, not a nicety. Until
+> it is set, you will lose leads and mis-score them.
+>
+> While you are there, note that `allowDuplicateOpportunity: false` means one opportunity per
+> contact per pipeline. That is fine for a funnel, but a lead who re-submits after being marked
+> Lost will be blocked from opening a second opportunity.
+
 The app created the calendar, but it has **no availability** until a host connects a real one.
 
 GHL → **Settings → Calendars** → **Discovery Call** → **Edit**

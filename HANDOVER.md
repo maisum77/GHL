@@ -226,6 +226,7 @@ finished, and every downstream workflow condition is reading nothing.
 | Nurture emails do not arrive | Sender domain not verified | Verify in GHL, then send a test email |
 | `Too many submissions from this connection` | Rate limit hit | Wait 10 minutes |
 | Duplicate contacts on repeat submissions | Location allows duplicates | GHL → Settings → Duplicates → allow on email only |
+| Two different leads collapse into one contact | Location merges on any identifier, not just email | GHL → Settings → Duplicates → **allow on email only**. With the default, a shared phone number merges two people and the second email overwrites the first |
 
 ---
 
