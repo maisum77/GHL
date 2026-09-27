@@ -11,8 +11,8 @@ export function SiteHeader() {
     <header className="site-header">
       <div className="container header-inner">
         <Link className="brand" href="/" onClick={() => setOpen(false)}>
-          <span className="brand-mark">N</span>
-          <span>Northstar / 01</span>
+          <span className="brand-mark">M</span>
+          <span>Moose / 01</span>
         </Link>
         <nav className="header-nav" aria-label="Main navigation">
           <Link href="/#approach">Approach</Link>

@@ -5,7 +5,11 @@ coverage
 *.tsbuildinfo
 .env
 .env.*
-!.env.example
 .DS_Store
 *.log
 .vercel
+
+# `vercel link` appends a broad `.env*` to this file, which also swallows the tracked
+# example file. Keep the negation last so it wins no matter where Vercel inserts its
+# pattern. Verify with: git check-ignore -v --no-index .env.example
+!.env.example

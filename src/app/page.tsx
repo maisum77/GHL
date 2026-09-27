@@ -68,7 +68,7 @@ export default async function HomePage() {
           </div>
         </section>
 
-        <div className="marquee" aria-label="Northstar capabilities">
+        <div className="marquee" aria-label="The Moose Funnel System capabilities">
           <div className="marquee-track">
             <span>Positioning</span><span>·</span><span>Websites</span><span>·</span><span>Lead qualification</span><span>·</span><span>Follow-up</span><span>·</span><span>Pipeline clarity</span><span>·</span>
             <span>Positioning</span><span>·</span><span>Websites</span><span>·</span><span>Lead qualification</span><span>·</span><span>Follow-up</span><span>·</span><span>Pipeline clarity</span><span>·</span>
@@ -142,7 +142,7 @@ export default async function HomePage() {
             <div className="section-heading">
               <span className="eyebrow">The difference</span>
               <h2>Less theatre. More operating system.</h2>
-              <p>Northstar pairs a sharper front door with the infrastructure that makes good follow-up repeatable.</p>
+              <p>The Moose Funnel System pairs a sharper front door with the infrastructure that makes good follow-up repeatable.</p>
             </div>
             <div className="bento-grid">
               {capabilities.map((capability) => (
@@ -181,7 +181,7 @@ export default async function HomePage() {
       </main>
       <footer className="site-footer">
         <div className="container footer-inner">
-          <span className="footer-meta">© {new Date().getFullYear()} Northstar / 01</span>
+          <span className="footer-meta">© {new Date().getFullYear()} The Moose Funnel System / 01</span>
           <div className="footer-links">
             <Link href="/setup">Client setup</Link>
             <Link href="/dashboard">Dashboard</Link>
